@@ -4,19 +4,24 @@ Date Last Modified: May 1, 2023
  """
 import random
 
-
 #This class will generate a hand for each player based on the remaining cards in the deck
 class playerHand:
-    def __init__(self, playerName, firstCard, secondCard):
+    def __init__(self, playerName):
         self.playerName = playerName
-        self.firstCard = firstCard
-        self.secondCard = secondCard
+        self.firstCard = ''
+        self.secondCard = ''
  
     def getCards(self):
         return [self.firstCard, self.secondCard]
     
     def getName(self):
         return self.playerName
+    
+    def setFirstCard(self, card):
+        self.firstCard = card
+
+    def setSecondCard(self, card):
+        self.secondCard = card    
     
 class playerFrequencies:
 
@@ -29,17 +34,17 @@ class playerFrequencies:
 class HandGenerator:
     def __init__(self, numPlayers):
         self.numPlayers = numPlayers
-        self.playerList = [f'P{x}' for x in range(1,self.numPlayers +1)]
+        self.playerList = [f'Player: {playerHand(x).getName()}' for x in range(1,self.numPlayers +1)]
+        self.playerHandsDealt = {}
+        self.burnCards = []
+        self.hand_Board = []
+        self.muck = []
         self.deck = ["As", "Ks", "Qs", "Js", "10s", "9s", "8s", "7s", "6s", "5s", "4s", "3s", "2s",
         "Ah", "Kh", "Qh", "Jh", "10h", "9h", "8h", "7h", "6h", "5h", "4h", "3h", "2h",
         "Ac", "Kc", "Qc", "Jc", "10c", "9c", "8c", "7c", "6c", "5c", "4c", "3c", "2c",
         "Ad", "Kd", "Qd", "Jd", "10d", "9d", "8d", "7d", "6d", "5d", "4d", "3d", "2d"]
-        #random.shuffle(self.deck)
-        self.playerHandsDealt = {}
-        self.burn_Card_First=''
-        self.burn_Card_Second=''
-        self.burn_Card_Third=''
-        self.hand_Board = []
+        random.shuffle(self.deck)
+        
 
     def getnumPlayers(self):
         return f'There are {self.numPlayers} playing'
@@ -58,23 +63,22 @@ class HandGenerator:
         FLOP_CARDS_NUM = 3
         TURN_CARD_NUM = 1
         RIVER_CARD_NUM = 1
-        burn_Card = lambda :self.deck.pop()
         
-        self.burn_Card_First = burn_Card
+        self.burnCards.append(self.deck.pop())
         FLOP_CARDS = [self.deck.pop() for _ in range(FLOP_CARDS_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
-        self.burn_Card_Second = burn_Card
+        self.hand_Board.append(FLOP_CARDS)
 
+        self.burnCards.append(self.deck.pop())
         TURN_CARD = [self.deck.pop() for _ in range(TURN_CARD_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
-        self.burn_Card_Third = burn_Card
-
+        self.hand_Board.append(TURN_CARD)
+        
+        self.burnCards.append(self.deck.pop())
         RIVER_CARD = [self.deck.pop() for _ in range(RIVER_CARD_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
+        self.hand_Board.append(RIVER_CARD)
 
-        print(self.deck)
-        print(f'the burn cards were: {self.burn_Card_First}, {self.burn_Card_Second}, {self.burn_Card_Third}')
-        self.hand_Board.extend([FLOP_CARDS, TURN_CARD, RIVER_CARD])
         return self.hand_Board
     
     def getBoard(self):
