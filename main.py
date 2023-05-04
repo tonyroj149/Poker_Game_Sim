@@ -14,7 +14,9 @@ def main():
     HandInPlay = HandGenerator(user_playerNumInput)
 
     print(HandInPlay.dealCards())
-    print(HandInPlay.getPlayerList())
+    print(HandInPlay.dealBoard())
+    print(HandInPlay.getBoard())
+    #print(HandInPlay.getPlayerList())
 
 
 main()
