@@ -1,4 +1,4 @@
-suited_Aces = []
+
 
 deck = [
     ["As", "Ah", "Ac", "Ad"],  # Aces
@@ -16,10 +16,25 @@ deck = [
     ["2s", "2h", "2c", "2d"],  # Twos
 ]
 
-for i in range(len(deck[0])):  # Iterate across each element of the first sublist
-    for j in range(1, len(deck)):  # Iterate across the remaining sublists
-        for k in range(len(deck[j])):  # Iterate across each element of the current sublist
-            if deck[0][i][-1] == deck[j][k][-1]:  # Check if the suits match
-                suited_Aces.append([deck[0][i], deck[j][k]])
+def suitedComboGenerator():
+    suited_Combos = []
 
-print(suited_Aces)
+    for i in range(len(deck)):
+        for j in range(len(deck[i])):
+            # Iterate over each card in the current sublist
+
+            for k in range(i+1, len(deck)):
+                # Start from i+1 to avoid duplicates and prevent comparing with itself
+
+                for l in range(len(deck[k])):
+                    # Iterate over each card in the subsequent sublist
+
+                    if deck[i][j][-1] == deck[k][l][-1]:
+                        # Check if the suits of the two cards match
+
+                        suited_Combos.append([deck[i][j], deck[k][l]])
+                        # Append the combination of suited cards to the suited_Aces list
+
+
+print(suited_Combos)
+print(f'The suited combos total: {len(suited_Aces)}') 
