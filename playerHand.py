@@ -35,7 +35,7 @@ class HandGenerator:
     def __init__(self, numPlayers):
         self.numPlayers = numPlayers
         self.playerList = [f'Player: {playerHand(x).getName()}' for x in range(1,self.numPlayers +1)]
-        self.playerHandsDealt = {}
+        self.playerHandsDealt = []
         self.burnCards = []
         self.hand_Board = []
         self.muck = []
@@ -48,7 +48,7 @@ class HandGenerator:
                      ["5s", "5h", "5c", "5d"],  ["4s", "4h", "4c", "4d"],  ["3s", "3h", "3c", "3d"], 
                      ["2s", "2h", "2c", "2d"]]
         
-        
+
 
         random.shuffle(self.deck)
         
