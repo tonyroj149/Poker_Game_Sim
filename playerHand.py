@@ -3,11 +3,17 @@ Author: Anthony Rojas
 Date Last Modified: May 1, 2023
  """
 import random
+import pyglet
 
 #This class will generate a hand for each player based on the remaining cards in the deck
-class playerHand:
-    def __init__(self, playerName):
-        self.playerName = playerName
+class pokerPlayer: 
+    playerIcon = pyglet.image('playerIcon.png')
+    
+    def __init__(self, name , position):
+        self.name = name
+        self.position = position
+        self.image = pyglet.image.load('')
+        self.sprite = pyglet.sprite.Sprite(self.image)
         self.firstCard = ''
         self.secondCard = ''
  
@@ -34,7 +40,7 @@ class playerFrequencies:
 class HandGenerator:
     def __init__(self, numPlayers):
         self.numPlayers = numPlayers
-        self.playerList = [f'Player: {playerHand(x).getName()}' for x in range(1,self.numPlayers +1)]
+        self.playerList = [f'Player: {pokerPlayer(x).getName()}' for x in range(1,self.numPlayers +1)]
         self.playerHandsDealt = []
         self.burnCards = []
         self.hand_Board = []
