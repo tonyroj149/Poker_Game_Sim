@@ -7,11 +7,12 @@ import random
 # This class represents a poker player and generates a hand based on the remaining cards in the deck
 class pokerPlayer:
     
-    def __init__(self, name, position):
+    def __init__(self, name, position, init_Stack = 0):
         self.name = name
         self.position = position
         self.firstCard = ''  # First card in hand
         self.secondCard = ''  # Second card in hand
+        self.stackSize = init_Stack
  
     def getCards(self):
         """Return the player's hand"""
@@ -27,7 +28,13 @@ class pokerPlayer:
 
     def setSecondCard(self, card):
         """Set the player's second card"""
-        self.secondCard = card    
+        self.secondCard = card   
+
+    def setStackSize(self, value):
+        self.stackSize += value
+        label.text
+        
+
     
 class playerFrequencies:
     """Class to represent player frequencies"""
