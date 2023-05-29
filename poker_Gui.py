@@ -1,10 +1,12 @@
 import math
 import pyglet
+from pyglet.window import mouse
+from playerHand import *
 
 new_window = pyglet.window.Window()
 
 # Define the number of players and empty lists for positions and sprites
-player_Count = 8
+player_Count = 4
 position_list = []
 sprites = []
 
@@ -14,6 +16,39 @@ pokerDogs_photo = pyglet.sprite.Sprite(pokerDogs)
 
 # Load the player icon image
 pokerPlayerIcon = pyglet.image.load('playerIcon.png')
+
+class PlayerSprite(pyglet.sprite.Sprite):
+    def __init__(self, image, x, y, stack_size):
+        super().__init__(image, x, y)
+        self.stack_size = stack_size
+
+        self.stack_label = pyglet.text.Label(
+            f"{self.stack_size}",
+            font_name='Arial',
+            font_size=12,
+            x=self.x,
+            y=self.y - 20,
+            anchor_x='center',
+            anchor_y='center'
+        )
+        self.stack_label_BB = pyglet.text.Label(
+            f"{self.stack_size} BBs",
+            font_name='Arial',
+            font_size=12,
+            x=self.stack_label.x,
+            y=self.stack_label.y - 20,
+            anchor_x='center',
+            anchor_y='center'
+        )
+
+    def draw(self):
+        super().draw()
+        self.stack_label.draw()
+
+    def on_button_click(self, x, y, button, modifiers):
+        if button == mouse.LEFT:
+            print("Button clicked for player with stack size:", self.stack_size)
+
 
 # Get the window size and the size of the background image
 WINDOW_SIZE_X, WINDOW_SIZE_Y = new_window.get_size()[0], new_window.get_size()[1]
@@ -41,19 +76,32 @@ def seating_position_Generator(total_players):
 
 # Generate the seating positions and create sprites for each position
 seating_position_Generator(player_Count)
+current_Hand = HandGenerator(player_Count)
 
-for position in position_list:
-    sprite = pyglet.sprite.Sprite(pokerPlayerIcon, x=position[0], y=position[1])
+for i, position in enumerate(position_list):
+    stack_size = 1000  # Set the stack size for the player
+    sprite = PlayerSprite(image=pokerPlayerIcon, x=position[0], y=position[1], stack_size=stack_size)
     sprite.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width
     sprites.append(sprite)
-
-print(position_list)
 
 @new_window.event
 def on_draw():
     new_window.clear()
     pokerDogs_photo.draw()
+
+    # Draw each sprite, including player icons and stack size labels
     for sprite in sprites:
         sprite.draw()
 
-pyglet.app.run()
+@new_window.event
+def on_mouse_press(x, y, button, modifiers):
+    # Handle mouse press event
+    for sprite in sprites:
+        # Check if the mouse press occurred within the bounds of a sprite's button (if it had one)
+        if sprite.button.x < x < sprite.button.x + sprite.button.width and sprite.button.y < y < sprite.button.y + sprite.button.height:
+            # Perform the desired action for the sprite (e.g., calling on_button_click method)
+            sprite.on_button_click(x, y, button, modifiers)
+
+
+if __name__ == '__main__':
+    pyglet.app.run()

@@ -7,9 +7,8 @@ import random
 # This class represents a poker player and generates a hand based on the remaining cards in the deck
 class pokerPlayer:
     
-    def __init__(self, name, position, init_Stack = 0):
+    def __init__(self, name, init_Stack = 0):
         self.name = name
-        self.position = position
         self.firstCard = ''  # First card in hand
         self.secondCard = ''  # Second card in hand
         self.stackSize = init_Stack
@@ -31,11 +30,8 @@ class pokerPlayer:
         self.secondCard = card   
 
     def setStackSize(self, value):
-        self.stackSize += value
-        label.text
-        
+        self.stackSize += value        
 
-    
 class playerFrequencies:
     """Class to represent player frequencies"""
     def __init__(self):
@@ -48,7 +44,7 @@ class HandGenerator:
     """Class to generate player hands"""
     def __init__(self, numPlayers):
         self.numPlayers = numPlayers
-        self.playerList = [f'Player: {pokerPlayer(x).getName()}' for x in range(1, self.numPlayers + 1)]  # List of player names
+        self.playerList = [f'Player: {pokerPlayer(x).getName()}' for x in range(0, self.numPlayers)]  # List of player names
         self.playerHandsDealt = []  # List to store player hands
         self.burnCards = []  # List to store burn cards
         self.hand_Board = []  # List to store community cards on the board
