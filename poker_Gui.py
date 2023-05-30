@@ -7,23 +7,31 @@ new_window = pyglet.window.Window()
 
 # Define the number of players and empty lists for positions and sprites
 player_Count = 4
+SMALL_BLIND = 5
+BIG_BLIND = 10
+
 position_list = []
 sprites = []
 
 # Load the background image
-pokerDogs = pyglet.image.load('pokertable.png')
-pokerDogs_photo = pyglet.sprite.Sprite(pokerDogs)
+pokerTable = pyglet.image.load('pokertable.png')
+pokerTable_Sprite = pyglet.sprite.Sprite(pokerTable)
 
 # Load the player icon image
 pokerPlayerIcon = pyglet.image.load('playerIcon.png')
 
+#load the dealer button icon image
+dealerButton = pyglet.image.load('dealerButton.png')
+dealerButton_Sprite = pyglet.sprite.Sprite(dealerButton)
+
 class PlayerSprite(pyglet.sprite.Sprite):
-    def __init__(self, image, x, y, stack_size):
+    def __init__(self, image, x, y):
         super().__init__(image, x, y)
-        self.stack_size = stack_size
+        self.name = pokerPlayer(str(position_list[random.randint(0,len(position_list))-1]))
+        self.current_position = ''
 
         self.stack_label = pyglet.text.Label(
-            f"{self.stack_size}",
+            f"${self.name.stackSize}",
             font_name='Arial',
             font_size=12,
             x=self.x,
@@ -32,7 +40,7 @@ class PlayerSprite(pyglet.sprite.Sprite):
             anchor_y='center'
         )
         self.stack_label_BB = pyglet.text.Label(
-            f"{self.stack_size} BBs",
+            f"{self.name.stackSize/BIG_BLIND} BBs",
             font_name='Arial',
             font_size=12,
             x=self.stack_label.x,
@@ -40,26 +48,37 @@ class PlayerSprite(pyglet.sprite.Sprite):
             anchor_x='center',
             anchor_y='center'
         )
+        self.test_Label = pyglet.text.Label(
+            f"VPIP: {round(self.name.frequencies.get_VPIP()/100, 2)}",
+            font_name='Arial',
+            font_size=12,
+            x=self.stack_label.x,
+            y=self.stack_label_BB.y - 20,
+            anchor_x='center',
+            anchor_y='center'
+        )
+
 
     def draw(self):
         super().draw()
         self.stack_label.draw()
+        self.stack_label_BB.draw()
+        self.test_Label.draw()
 
     def on_button_click(self, x, y, button, modifiers):
         if button == mouse.LEFT:
-            print("Button clicked for player with stack size:", self.stack_size)
+            print("Button clicked for player with stack size:", self.name.stackSize)
 
 
 # Get the window size and the size of the background image
 WINDOW_SIZE_X, WINDOW_SIZE_Y = new_window.get_size()[0], new_window.get_size()[1]
-pokerDogs_photo_size_x, pokerDogs_photo_size_y = pokerDogs.width, pokerDogs.height
 
 # Calculate the desired size of the player icon based on the window size and player count
-PLAYER_ICON_SIZE_X = WINDOW_SIZE_X / (2 * player_Count)
-PLAYER_ICON_SIZE_Y = WINDOW_SIZE_Y / (2 * player_Count)
+PLAYER_ICON_SIZE_X = WINDOW_SIZE_X / (3 * player_Count)
+PLAYER_ICON_SIZE_Y = WINDOW_SIZE_Y / (3 * player_Count)
 
 # Scale the background image to fit the window size
-pokerDogs_photo.update(scale_x=WINDOW_SIZE_X / pokerDogs_photo_size_x, scale_y=WINDOW_SIZE_Y / pokerDogs_photo_size_y)
+pokerTable_Sprite.update(scale_x=WINDOW_SIZE_X / pokerTable.width, scale_y=WINDOW_SIZE_Y / pokerTable.height)
 
 # Organize player seat positions geometrically
 def seating_position_Generator(total_players):
@@ -77,17 +96,22 @@ def seating_position_Generator(total_players):
 # Generate the seating positions and create sprites for each position
 seating_position_Generator(player_Count)
 current_Hand = HandGenerator(player_Count)
+print(current_Hand.dealPreFlop())
+print(current_Hand)
+#preflop = current_Hand.dealPreFlop()
+#flop = current_Hand.dealBoard()
+#print(flop)
 
 for i, position in enumerate(position_list):
     stack_size = 1000  # Set the stack size for the player
-    sprite = PlayerSprite(image=pokerPlayerIcon, x=position[0], y=position[1], stack_size=stack_size)
+    sprite = PlayerSprite(image=pokerPlayerIcon, x=position[0], y=position[1])
     sprite.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width
     sprites.append(sprite)
 
 @new_window.event
 def on_draw():
     new_window.clear()
-    pokerDogs_photo.draw()
+    pokerTable_Sprite.draw()
 
     # Draw each sprite, including player icons and stack size labels
     for sprite in sprites:

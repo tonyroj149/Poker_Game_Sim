@@ -7,11 +7,12 @@ import random
 # This class represents a poker player and generates a hand based on the remaining cards in the deck
 class pokerPlayer:
     
-    def __init__(self, name, init_Stack = 0):
+    def __init__(self, name, init_Stack = None):
         self.name = name
         self.firstCard = ''  # First card in hand
         self.secondCard = ''  # Second card in hand
         self.stackSize = init_Stack
+        self.frequencies = playerFrequencies()
  
     def getCards(self):
         """Return the player's hand"""
@@ -38,13 +39,26 @@ class playerFrequencies:
         self.VPIP = random.uniform(5, 45)  # Voluntarily Put In Pot (VPIP)
         self.PFR = random.uniform(10, 30)  # Pre-Flop Raise (PFR)
         self.THREE_BET_PERCENTAGE = random.uniform(5, 15)  # 3-Bet Percentage
-        self.FOLD_To_3BET = random.uniform(35, 50)  # Fold to 3-Bet Percentage   
-            
+        self.FOLD_To_3BET = random.uniform(35, 50)  # Fold to 3-Bet Percentage 
+    
+    def get_VPIP(self):
+        return self.VPIP
+      
+    def get_PFR(self):
+        return self.PFR
+    
+    def get_THREE_BET_PERCENTAGE(self):
+
+        return self.THREE_BET_PERCENTAGE
+    
+    def get_FOLD_TO_THREE_BET(self):
+        return self.FOLD_To_3BET     
+       
 class HandGenerator:
     """Class to generate player hands"""
     def __init__(self, numPlayers):
         self.numPlayers = numPlayers
-        self.playerList = [f'Player: {pokerPlayer(x).getName()}' for x in range(0, self.numPlayers)]  # List of player names
+        self.player_dict = {i+1: f'Player {i+1}' for i, x in enumerate(range(self.numPlayers))}
         self.playerHandsDealt = []  # List to store player hands
         self.burnCards = []  # List to store burn cards
         self.hand_Board = []  # List to store community cards on the board
@@ -68,20 +82,21 @@ class HandGenerator:
         """Return the list of player names"""
         return f'Player list: {self.playerList}'
     
-    def dealCards(self):
+    def dealPreFlop(self):
         """Deal cards to players"""
         numCards = 2
-        for player in self.playerList:
-            self.playerHandsDealt[player] = [self.deck.pop() for _ in range(numCards)]
+        for player_number, player_name in self.player_dict.items():
+            self.playerHandsDealt.append((player_number, [self.deck.pop() for _ in range(numCards)]))
         print(f'The remaining cards are: {len(self.deck)}/52')
         return self.playerHandsDealt
+
 
     def dealBoard(self):
         """Deal community cards to the board"""
         FLOP_CARDS_NUM = 3
         TURN_CARD_NUM = 1
         RIVER_CARD_NUM = 1
-        
+    
         self.burnCards.append(self.deck.pop())
         FLOP_CARDS = [self.deck.pop() for _ in range(FLOP_CARDS_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')

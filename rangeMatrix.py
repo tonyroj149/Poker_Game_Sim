@@ -77,8 +77,6 @@ def suitedComboGenerator():
                         # Append the combination of suited cards to the suitedCombos list
     return suitedCombos
 
-def rangeMatrixGenerator():
-
 if __name__ == "__main__":
 
     suitedComboGenerator()
