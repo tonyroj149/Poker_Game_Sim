@@ -22,6 +22,9 @@ class pokerPlayer:
         """Return the player's name"""
         return self.name
     
+    def getStackSize(self):
+        return self.stackSize
+    
     def setFirstCard(self, card):
         """Set the player's first card"""
         self.firstCard = card
@@ -48,7 +51,6 @@ class playerFrequencies:
         return self.PFR
     
     def get_THREE_BET_PERCENTAGE(self):
-
         return self.THREE_BET_PERCENTAGE
     
     def get_FOLD_TO_THREE_BET(self):
@@ -91,22 +93,25 @@ class HandGenerator:
         return self.playerHandsDealt
 
 
-    def dealBoard(self):
+    def dealFlop(self):
         """Deal community cards to the board"""
         FLOP_CARDS_NUM = 3
-        TURN_CARD_NUM = 1
-        RIVER_CARD_NUM = 1
     
         self.burnCards.append(self.deck.pop())
         FLOP_CARDS = [self.deck.pop() for _ in range(FLOP_CARDS_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
         self.hand_Board.append(FLOP_CARDS)
+        return self.hand_Board
 
+    def dealTurn(self):
+        TURN_CARD_NUM = 1
         self.burnCards.append(self.deck.pop())
         TURN_CARD = [self.deck.pop() for _ in range(TURN_CARD_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
         self.hand_Board.append(TURN_CARD)
-        
+
+    def dealRiver(self):
+        RIVER_CARD_NUM = 1
         self.burnCards.append(self.deck.pop())
         RIVER_CARD = [self.deck.pop() for _ in range(RIVER_CARD_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
@@ -117,3 +122,9 @@ class HandGenerator:
     def getBoard(self):
         """Return the community cards on the board"""
         return self.hand_Board
+    
+    def getBurnCards(self):
+        return self.burnCards
+    
+    def getRemainingCards(self):
+        return self.deck
