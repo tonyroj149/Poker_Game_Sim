@@ -65,11 +65,11 @@ class HandGenerator:
         self.burnCards = []  # List to store burn cards
         self.hand_Board = []  # List to store community cards on the board
         self.muck = []  # List to store folded cards
-        self.deck = ["As", "Ks", "Qs", "Js", "10s", "9s", "8s", "7s", "6s", "5s", "4s", "3s", "2s",
-                     "Ah", "Kh", "Qh", "Jh", "10h", "9h", "8h", "7h", "6h", "5h", "4h", "3h", "2h",
-                     "Ac", "Kc", "Qc", "Jc", "10c", "9c", "8c", "7c", "6c", "5c", "4c", "3c", "2c",
-                     "Ad", "Kd", "Qd", "Jd", "10d", "9d", "8d", "7d", "6d", "5d", "4d", "3d", "2d"]  # Deck of cards
-        self.Sorted_deck = [["As", "Ah", "Ac", "Ad"], ["10s", "10h", "10c", "10d"], ["9s", "9h", "9c", "9d"],
+        self.deck = ["As", "Ks", "Qs", "Js", "Ts", "9s", "8s", "7s", "6s", "5s", "4s", "3s", "2s",
+                     "Ah", "Kh", "Qh", "Jh", "Th", "9h", "8h", "7h", "6h", "5h", "4h", "3h", "2h",
+                     "Ac", "Kc", "Qc", "Jc", "Tc", "9c", "8c", "7c", "6c", "5c", "4c", "3c", "2c",
+                     "Ad", "Kd", "Qd", "Jd", "Td", "9d", "8d", "7d", "6d", "5d", "4d", "3d", "2d"]  # Deck of cards
+        self.Sorted_deck = [["As", "Ah", "Ac", "Ad"], ["Ts", "Th", "Tc", "Td"], ["9s", "9h", "9c", "9d"],
                             ["8s", "8h", "8c", "8d"], ["7s", "7h", "7c", "7d"], ["6s", "6h", "6c", "6d"],
                             ["5s", "5h", "5c", "5d"], ["4s", "4h", "4c", "4d"], ["3s", "3h", "3c", "3d"],
                             ["2s", "2h", "2c", "2d"]]  # Sorted deck for evaluating hands

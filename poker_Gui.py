@@ -1,11 +1,18 @@
 import math
 import pyglet
 from playerHand import *
+from PIL import Image
 
-new_window = pyglet.window.Window()
+WINDOW_SIZE_X, WINDOW_SIZE_Y = 1000, 750
 
-# Get the window size and the size of the background image
-WINDOW_SIZE_X, WINDOW_SIZE_Y = new_window.get_size()[0], new_window.get_size()[1]
+# Open the background image
+backgroundImage = Image.open('bgimage.jpg')
+
+# Resize the background image
+resized_backgroundImage = backgroundImage.resize((WINDOW_SIZE_X, WINDOW_SIZE_Y))
+
+# Create a Pyglet window with the specified size
+new_window = pyglet.window.Window(width=WINDOW_SIZE_X, height=WINDOW_SIZE_Y)
 
 # Define the number of players and empty lists for positions and sprites
 player_Count = 6
@@ -20,10 +27,12 @@ sprites = []
 PLAYER_ICON_SIZE_X = WINDOW_SIZE_X / (3 * player_Count)
 PLAYER_ICON_SIZE_Y = WINDOW_SIZE_Y / (3 * player_Count)
 
-# Load the background image and scale it to fit the window size
-pokerTable = pyglet.image.load('pokertable.png')
-pokerTable_Sprite = pyglet.sprite.Sprite(pokerTable)
-pokerTable_Sprite.update(scale_x=WINDOW_SIZE_X / pokerTable.width, scale_y=WINDOW_SIZE_Y / pokerTable.height)
+BOARD_CARD_SIZE_X = PLAYER_ICON_SIZE_X * 1.5
+BOARD_CARD_SIZE_Y = PLAYER_ICON_SIZE_Y * 1.5
+
+# Create a Pyglet sprite from the resized background image
+pokerTable_Sprite = pyglet.sprite.Sprite(pyglet.image.ImageData(
+    WINDOW_SIZE_X, WINDOW_SIZE_Y, 'RGB', resized_backgroundImage.tobytes()))
 
 # Load the player icon image
 pokerPlayerIcon = pyglet.image.load('playerIcon.png')
@@ -38,6 +47,8 @@ dealerButton_Sprite.update(scale_x=PLAYER_ICON_SIZE_X / dealerButton.width, scal
 class PlayerSprite(pyglet.sprite.Sprite):
     def __init__(self, image, x, y):
         super().__init__(image, x, y)
+
+        #create pokerPlayer sprite with name from position list and initial stack varying in some range
         self.name = pokerPlayer(str(position_list[random.randint(0, len(position_list) - 1)]), random.randrange(800, 2500, 10))
         self.current_position = ''
         self.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width  # Scale the sprite
@@ -82,14 +93,11 @@ class CommunityCards():
         self.availableCards = availableCards
 
         # Load card images and determine their sizes
-        flop_card1_image = pyglet.image.load('Ad.png')
-        flop_card2_image = pyglet.image.load('Ac.png')
-        flop_card3_image = pyglet.image.load('Kh.png')
+        flop_card1_image = pyglet.image.load(current_Hand.getBoard()[0][0] + '.png')
+        flop_card2_image = pyglet.image.load(current_Hand.getBoard()[0][1] + '.png')
+        flop_card3_image = pyglet.image.load(current_Hand.getBoard()[0][2] + '.png')
         turn_card_image = pyglet.image.load('playerIcon.png')
         river_card_image = pyglet.image.load('playerIcon.png')
-                                                    # Calculate the desired size of the player icon based on the window size and player count
-        PLAYER_ICON_SIZE_X = WINDOW_SIZE_X / 3
-        PLAYER_ICON_SIZE_Y = WINDOW_SIZE_Y / 3
 
         self.card_width = flop_card1_image.width / PLAYER_ICON_SIZE_X  # Assuming all cards have the same width
         self.card_height = flop_card1_image.height / PLAYER_ICON_SIZE_Y  # Assuming all cards have the same height
@@ -100,39 +108,45 @@ class CommunityCards():
         self.river_batch = pyglet.graphics.Batch()
 
         # Create sprites for the community cards
-        self.flop_card1 = pyglet.sprite.Sprite(flop_card1_image, batch=self.flop_batch)
+        self.flop_card1 = pyglet.sprite.Sprite(flop_card1_image)
+        self.flop_card1.update(scale_x=BOARD_CARD_SIZE_X / flop_card1_image.width, scale_y=BOARD_CARD_SIZE_X / flop_card1_image.height)
+
         self.flop_card2 = pyglet.sprite.Sprite(flop_card2_image, batch=self.flop_batch)
+        self.flop_card2.update(scale_x=BOARD_CARD_SIZE_X / flop_card2_image.width, scale_y=BOARD_CARD_SIZE_X / flop_card2_image.height)
+
         self.flop_card3 = pyglet.sprite.Sprite(flop_card3_image, batch=self.flop_batch)
+        self.flop_card3.update(scale_x=BOARD_CARD_SIZE_X / flop_card3_image.width, scale_y=BOARD_CARD_SIZE_X / flop_card3_image.height)
+
         self.turn_card = pyglet.sprite.Sprite(turn_card_image, batch=self.turn_batch)
         self.river_card = pyglet.sprite.Sprite(river_card_image, batch=self.river_batch)
 
-    def calculate_positions(self, window_width, window_height):
+    def calculate_positions(self):
         # Calculate the position of the center of the window
-        center_x = window_width // 2
-        center_y = window_height // 2
+        center_x = WINDOW_SIZE_X // 2
+        center_y = WINDOW_SIZE_Y // 2
 
         # Position the flop cards
-        flop_card1_x = center_x - (1.5 * self.card_width)
-        flop_card1_y = center_y - (self.card_height // 2)
-        self.flop_card1.position = (flop_card1_x, flop_card1_y)
+        self.flop_card1.x = center_x 
+        self.flop_card1.y = center_y
+        # self.flop_card1.position = (self.flop_card1.x, self.flop_card1.y)
 
-        flop_card2_x = center_x - (0.5 * self.card_width)
-        flop_card2_y = center_y - (self.card_height // 2)
-        self.flop_card2.position = (flop_card2_x, flop_card2_y)
+        self.flop_card2.x = center_x - (0.5 * self.card_width)
+        self.flop_card2.y = center_y - (self.card_height // 2)
+        # self.flop_card2.position = (flop_card2_x, flop_card2_y)
 
         flop_card3_x = center_x + (0.5 * self.card_width)
         flop_card3_y = center_y - (self.card_height // 2)
-        self.flop_card3.position = (flop_card3_x, flop_card3_y)
+        # self.flop_card3.position = (flop_card3_x, flop_card3_y)
 
         # Position the turn card
         turn_card_x = center_x - (self.card_width // 2)
         turn_card_y = center_y - (self.card_height // 2) - 20
-        self.turn_card.position = (turn_card_x, turn_card_y)
+        # self.turn_card.position = (turn_card_x, turn_card_y)
 
         # Position the river card
         river_card_x = center_x - (self.card_width // 2)
         river_card_y = center_y - (self.card_height // 2) - 40
-        self.river_card.position = (river_card_x, river_card_y)
+        # self.river_card.position = (river_card_x, river_card_y)
 
     def set_window_size(self, window_width, window_height):
         self.calculate_positions(window_width, window_height)
@@ -173,29 +187,32 @@ for i, position in enumerate(position_list):
     sprite.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width
     sprites.append(sprite)
 
-print(button_position_list)
 current_Hand = HandGenerator(player_Count)
 preflop = current_Hand.dealPreFlop()
 flop = current_Hand.dealFlop()
+print(current_Hand.getBoard()[0])
+print(current_Hand.getBoard()[0][0])
+
 community_cards = CommunityCards(current_Hand.getRemainingCards())
+community_cards.calculate_positions()
 
 for card in flop:
-    community_cards.flop_card1 
+    community_cards.flop_card1
 # Function to update
-def update_window_size(width, height):
-    global WINDOW_SIZE_X, WINDOW_SIZE_Y
+# def update_window_size(width, height):
+#     global WINDOW_SIZE_X, WINDOW_SIZE_Y
     
-    def update_window_size(width, height):
-        global WINDOW_SIZE_X, WINDOW_SIZE_Y
-        WINDOW_SIZE_X, WINDOW_SIZE_Y = width, height
-        new_window.set_size(WINDOW_SIZE_X, WINDOW_SIZE_Y)
-        pokerTable_Sprite.update(scale_x=WINDOW_SIZE_X / pokerTable.width, scale_y=WINDOW_SIZE_Y / pokerTable.height)
-        community_cards.set_window_size(WINDOW_SIZE_X, WINDOW_SIZE_Y)
+#     def update_window_size(width, height):
+#         global WINDOW_SIZE_X, WINDOW_SIZE_Y
+#         WINDOW_SIZE_X, WINDOW_SIZE_Y = width, height
+#         new_window.set_size(WINDOW_SIZE_X, WINDOW_SIZE_Y)
+#         pokerTable_Sprite.update(scale_x=WINDOW_SIZE_X / pokerTable.width, scale_y=WINDOW_SIZE_Y / pokerTable.height)
+#         community_cards.set_window_size(WINDOW_SIZE_X, WINDOW_SIZE_Y)
 
-# Event handler for window resize
-@new_window.event
-def on_resize(width, height):
-    update_window_size(width, height)
+# # Event handler for window resize
+# @new_window.event
+# def on_resize(width, height):
+#     update_window_size(width, height)
 
 
 @new_window.event
@@ -208,10 +225,7 @@ def on_draw():
     for sprite in sprites:
         sprite.draw()
     community_cards.get_cards()[0].draw()
-    # flop_batch, turn_batch, river_batch = community_cards.get_batches()
-    # flop_batch.draw()
-    # turn_batch.draw()
-    # river_batch.draw()
+    community_cards.get_cards()[1].draw()
 
 # Event handler for mouse press
 @new_window.event
