@@ -128,25 +128,20 @@ class CommunityCards():
         # Position the flop cards
         self.flop_card1.x = center_x 
         self.flop_card1.y = center_y
-        # self.flop_card1.position = (self.flop_card1.x, self.flop_card1.y)
 
         self.flop_card2.x = center_x - (0.5 * self.card_width)
         self.flop_card2.y = center_y - (self.card_height // 2)
-        # self.flop_card2.position = (flop_card2_x, flop_card2_y)
 
-        flop_card3_x = center_x + (0.5 * self.card_width)
-        flop_card3_y = center_y - (self.card_height // 2)
-        # self.flop_card3.position = (flop_card3_x, flop_card3_y)
+        self.flop_card3.x = center_x + (0.5 * self.card_width)
+        self.flop_card3.y = center_y - (self.card_height // 2)
 
         # Position the turn card
-        turn_card_x = center_x - (self.card_width // 2)
-        turn_card_y = center_y - (self.card_height // 2) - 20
-        # self.turn_card.position = (turn_card_x, turn_card_y)
+        self.turn_card.x = center_x - (self.card_width // 2)
+        self.turn_card.y = center_y - (self.card_height // 2) - 20
 
         # Position the river card
-        river_card_x = center_x - (self.card_width // 2)
-        river_card_y = center_y - (self.card_height // 2) - 40
-        # self.river_card.position = (river_card_x, river_card_y)
+        self.river_card.x = center_x - (self.card_width // 2)
+        self.river_card.y = center_y - (self.card_height // 2) - 40
 
     def set_window_size(self, window_width, window_height):
         self.calculate_positions(window_width, window_height)
@@ -196,32 +191,12 @@ print(current_Hand.getBoard()[0][0])
 community_cards = CommunityCards(current_Hand.getRemainingCards())
 community_cards.calculate_positions()
 
-for card in flop:
-    community_cards.flop_card1
-# Function to update
-# def update_window_size(width, height):
-#     global WINDOW_SIZE_X, WINDOW_SIZE_Y
-    
-#     def update_window_size(width, height):
-#         global WINDOW_SIZE_X, WINDOW_SIZE_Y
-#         WINDOW_SIZE_X, WINDOW_SIZE_Y = width, height
-#         new_window.set_size(WINDOW_SIZE_X, WINDOW_SIZE_Y)
-#         pokerTable_Sprite.update(scale_x=WINDOW_SIZE_X / pokerTable.width, scale_y=WINDOW_SIZE_Y / pokerTable.height)
-#         community_cards.set_window_size(WINDOW_SIZE_X, WINDOW_SIZE_Y)
-
-# # Event handler for window resize
-# @new_window.event
-# def on_resize(width, height):
-#     update_window_size(width, height)
-
-
 @new_window.event
 def on_draw():
     new_window.clear()
     pokerTable_Sprite.draw()
     dealerButton_Sprite.draw()
-    for i,j in button_position_list:
-        dealerButton_Sprite
+    
     for sprite in sprites:
         sprite.draw()
     community_cards.get_cards()[0].draw()
