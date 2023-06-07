@@ -178,9 +178,9 @@ def seating_position_Generator(total_players):
 
     for i in range(total_players):
         angle = 2 * math.pi * i / num_divisions
-        x = ellipse_center[0] + math.cos(angle) * ellipse_radius_x - (PLAYER_ICON_SIZE_X / 2)
+        x = round(ellipse_center[0] + math.cos(angle) * ellipse_radius_x - (PLAYER_ICON_SIZE_X / 2),2)
         button_X = x - PLAYER_ICON_SIZE_X
-        y = ellipse_center[1] + math.sin(angle) * ellipse_radius_y - (PLAYER_ICON_SIZE_Y / 2)
+        y = round(ellipse_center[1] + math.sin(angle) * ellipse_radius_y - (PLAYER_ICON_SIZE_Y / 2), 2)
         button_Y = y +  PLAYER_ICON_SIZE_Y
         position_list.append((x, y))
         button_position_list.append((button_X, button_Y))
@@ -202,7 +202,7 @@ for i, position in enumerate(position_list):
 
 currentHand = CommunityCards()
 currentHand.calculate_positions(WINDOW_SIZE_X, WINDOW_SIZE_Y)
-print(player_sprites[0].get_playerSprite_name())
+print(position_list)
 
 
 @new_window.event
