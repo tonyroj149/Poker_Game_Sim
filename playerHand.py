@@ -101,7 +101,7 @@ class HandGenerator:
         FLOP_CARDS = [self.deck.pop() for _ in range(FLOP_CARDS_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
         self.hand_Board.append(FLOP_CARDS)
-        return self.hand_Board
+        return FLOP_CARDS
 
     def dealTurn(self):
         TURN_CARD_NUM = 1
@@ -109,6 +109,7 @@ class HandGenerator:
         TURN_CARD = [self.deck.pop() for _ in range(TURN_CARD_NUM)]
         print(f'The remaining cards are: {len(self.deck)}/52')
         self.hand_Board.append(TURN_CARD)
+        return TURN_CARD
 
     def dealRiver(self):
         RIVER_CARD_NUM = 1
@@ -117,7 +118,7 @@ class HandGenerator:
         print(f'The remaining cards are: {len(self.deck)}/52')
         self.hand_Board.append(RIVER_CARD)
 
-        return self.hand_Board
+        return RIVER_CARD
     
     def getBoard(self):
         """Return the community cards on the board"""
