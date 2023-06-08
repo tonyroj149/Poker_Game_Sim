@@ -1,50 +1,18 @@
 from playerHand import *
-from betting import BettingRound
+from handEvaluator import HandEvaluator
+from poker_Gui import *
 
-# Define the number of players and blinds
-player_count = 6
-small_blind = 5
-big_blind = 10
+def start_hand(players, small_blind, big_blind):
+    currentHand = CommunityCards()
+    currentHand.calculate_positions(WINDOW_SIZE_X, WINDOW_SIZE_Y)
+    currentHand_Betting = BettingRound(player_Count, SMALL_BLIND, BIG_BLIND)
+    return currentHand
 
-# Generate the players
-players = []
-for _ in range(player_count):
-    player = Player()
-    players.append(player)
-
-# Create the betting round
-betting_round = BettingRound(players, small_blind, big_blind)
-
-# Start the hand
-while True:
-    print("Starting a new hand...")
-
-    # Reset the players and deck for a new hand
-    for player in players:
-        player.reset()
-    deck = Deck()
-    deck.shuffle()
-
-    # Deal the initial hand to each player
-    for player in players:
-        hand = Hand(deck.draw_card(), deck.draw_card())
-        player.receive_hand(hand)
-
-    # Preflop round
-    print("=== Preflop ===")
-    while not betting_round.is_betting_round_complete():
-        current_player = betting_round.get_current_player()
-        # Handle the betting action for the current player
-        action = current_player.take_action(betting_round.get_current_bet())
-        betting_round.process_action(current_player, action)
-        betting_round.update_current_player()
-
-    # Flop round
-    print("=== Flop ===")
+def play_betting_round(betting_round, community_cards=None):
     betting_round.start_next_round()
-    # Deal the flop cards
-    flop = [deck.draw_card(), deck.draw_card(), deck.draw_card()]
-    betting_round.set_community_cards(flop)
+    if community_cards:
+        betting_round.set_community_cards(community_cards)
+
     while not betting_round.is_betting_round_complete():
         current_player = betting_round.get_current_player()
         # Handle the betting action for the current player
@@ -52,35 +20,10 @@ while True:
         betting_round.process_action(current_player, action)
         betting_round.update_current_player()
 
-    # Turn round
-    print("=== Turn ===")
-    betting_round.start_next_round()
-    # Deal the turn card
-    turn = deck.draw_card()
-    betting_round.set_community_cards([turn])
-    while not betting_round.is_betting_round_complete():
-        current_player = betting_round.get_current_player()
-        # Handle the betting action for the current player
-        action = current_player.take_action(betting_round.get_current_bet())
-        betting_round.process_action(current_player, action)
-        betting_round.update_current_player()
-
-    # River round
-    print("=== River ===")
-    betting_round.start_next_round()
-    # Deal the river card
-    river = deck.draw_card()
-    betting_round.set_community_cards([river])
-    while not betting_round.is_betting_round_complete():
-        current_player = betting_round.get_current_player()
-        # Handle the betting action for the current player
-        action = current_player.take_action(betting_round.get_current_bet())
-        betting_round.process_action(current_player, action)
-        betting_round.update_current_player()
-
+def evaluate_and_award_pot(players, betting_round):
     # Evaluate hands and determine the winner(s)
     print("Evaluating hands...")
-    community_cards = flop + [turn] + [river]
+    community_cards = betting_round.get_community_cards()
     winners = HandEvaluator.find_winners(players, community_cards)
     print("Winner(s):")
     for winner in winners:
@@ -91,19 +34,56 @@ while True:
     for winner in winners:
         winner.add_chips(pot / len(winners))
 
-    # Check if any players have run out of chips
-    if any(player.get_chip_count() == 0 for player in players):
-        print("A player has run out of chips. Game over.")
-        break
+def play_game(player_count, small_blind, big_blind):
+    # Generate the players
+    players = []
+    for _ in range(player_count):
+        player = Player()
+        players.append(player)
 
-    # Check if the players want to continue playing another hand
-    play_again = input("Do you want to play another hand? (yes/no): ")
-    if play_again.lower() != "yes":
-        break
+    # Create the betting round
+    betting_round = BettingRound(players, small_blind, big_blind)
 
-print("Game over.")
+    # Start the hand
+    while True:
+        deck = start_hand(players, small_blind, big_blind)
 
+        # Preflop round
+        print("=== Preflop ===")
+        while not betting_round.is_betting_round_complete():
+            play_betting_round(betting_round)
 
+        # Flop round
+        print("=== Flop ===")
+        flop = [deck.draw_card(), deck.draw_card(), deck.draw_card()]
+        play_betting_round(betting_round, flop)
+
+        # Turn round
+        print("=== Turn ===")
+        turn = deck.draw_card()
+        play_betting_round(betting_round, [turn])
+
+        # River round
+        print("=== River ===")
+        river = deck.draw_card()
+        play_betting_round(betting_round, [river])
+
+        evaluate_and_award_pot(players, betting_round)
+
+        # Check if any players have run out of chips
+        if any(player.get_chip_count() == 0 for player in players):
+            print("A player has run out of chips. Game over.")
+            break
+
+        # Check if the players want to continue playing another hand
+        play_again = input("Do you want to play another hand? (yes/no): ")
+        if play_again.lower() != "yes":
+            break
+
+    print("Game over.")
+
+# Usage example
+play_game(6, 5, 10)
 
 class BettingRound:
     def __init__(self, players, small_blind, big_blind):

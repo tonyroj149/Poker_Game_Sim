@@ -1,6 +1,7 @@
 import math
 import pyglet
 from playerHand import *
+from pokerEngine import start_hand
 from PIL import Image
 
 WINDOW_SIZE_X, WINDOW_SIZE_Y = 1000, 750
@@ -16,7 +17,7 @@ new_window = pyglet.window.Window(width=WINDOW_SIZE_X, height=WINDOW_SIZE_Y)
 
 # Define the number of players and empty lists for positions and sprites
 
-player_Count = 4
+player_Count = 6
 SMALL_BLIND = 5
 BIG_BLIND = 10
 
@@ -51,12 +52,12 @@ class PlayerSprite(pyglet.sprite.Sprite):
         super().__init__(image, x, y)
 
         #create pokerPlayer sprite with name from position list and initial stack varying in some range
-        self.name = pokerPlayer(str(position_list[random.randint(0, len(position_list) - 1)]), random.randrange(800, 2500, 10))
+        self.player = pokerPlayer(str(position_list[random.randint(0, len(position_list) - 1)]), random.randrange(800, 2500, 10))
         self.current_position = ''
         self.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width  # Scale the sprite
 
         self.stack_label = pyglet.text.Label(
-            f"${self.name.getStackSize()}",
+            f"${self.player.getStackSize()}",
             font_name='Arial',
             font_size=12,
             x=self.x,
@@ -65,7 +66,7 @@ class PlayerSprite(pyglet.sprite.Sprite):
             anchor_y='center'
         )
         self.stack_label_BB = pyglet.text.Label(
-            f"{self.name.getStackSize() / BIG_BLIND} BBs",
+            f"{self.player.getStackSize() / BIG_BLIND} BBs",
             font_name='Arial',
             font_size=12,
             x=self.stack_label.x,
@@ -74,7 +75,7 @@ class PlayerSprite(pyglet.sprite.Sprite):
             anchor_y='center'
         )
         self.test_Label = pyglet.text.Label(
-            f"VPIP: {round(self.name.frequencies.get_VPIP() / 100, 2)}",
+            f"VPIP: {round(self.player.frequencies.get_VPIP() / 100, 2)}",
             font_name='Arial',
             font_size=12,
             x=self.stack_label.x,
@@ -82,16 +83,12 @@ class PlayerSprite(pyglet.sprite.Sprite):
             anchor_x='center',
             anchor_y='center'
         )
-
-    def get_playerSprite_name(self):
-        return self.name.getName()
-        
+      
     def draw(self):
         super().draw()
         self.stack_label.draw()
         self.stack_label_BB.draw()
         self.test_Label.draw()
-
 
 class CommunityCards():
     def __init__(self):
@@ -162,6 +159,9 @@ class CommunityCards():
         # Update the position of river card
         self.river_card.x = self.turn_card.x + self.river_card.width
         self.river_card.y = center_y
+    
+    def setPlayer(self, name, firstCard, secondCard):
+        return 0
 
     def get_batches(self):
         return self.flop_batch, self.turn_batch, self.river_batch
@@ -200,19 +200,14 @@ for i, position in enumerate(position_list):
     sprite.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width
     player_sprites.append(sprite)
 
-currentHand = CommunityCards()
-currentHand.calculate_positions(WINDOW_SIZE_X, WINDOW_SIZE_Y)
-print(position_list)
-
+start_hand()
 
 @new_window.event
 def on_draw():
     new_window.clear()
     pokerTable_Sprite.draw()
     dealerButton_Sprite.draw()
-    currentHand.get_batches()[0].draw()
-    currentHand.get_batches()[1].draw()
-    currentHand.get_batches()[2].draw()
+
     for sprite in player_sprites:
         sprite.draw()
 
