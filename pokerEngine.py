@@ -66,6 +66,10 @@ class PokerEngine:
         self.starting_chips = starting_chips
         self.players = []
         self.community_cards = []
+        self.pot = 0
+        self.current_player_index = 0
+        self.small_blind_index = 0
+        self.big_blind_index = 0
 
     def create_players(self):
         for i in range(self.num_players):
@@ -74,16 +78,28 @@ class PokerEngine:
                 "chips": self.starting_chips,
                 "hand": [],
                 "score": 0,
-                "folded" : False
+                "folded" : False,
+                "chip_entry": tk.Entry(window)  # Create an entry widget
             }
             self.players.append(player)
             chip_count_label = tk.Label(window, text=f"Chips: {player['chips']}", font=("Arial", 10))
             chip_count_label.place(x=player_coords[i][0] + player_radius + 5, y=player_coords[i][1] + 20)
             player["chip_count_label"] = chip_count_label
+            self.small_blind_index = 0
+            self.big_blind_index = 1
+
+    def get_current_player(self):
+        return self.players[self.current_player_index]
 
     def deal_hole_cards(self):
         deck = self.create_deck()
-        for player in self.players:
+        num_players = len(self.players)
+        start_index = self.small_blind_index
+
+        # Deal hole cards starting from the player after the big blind position
+        for i in range(num_players):
+            player_index = (start_index + i) % num_players
+            player = self.players[player_index]
             player["hand"] = [deck.pop(), deck.pop()]
             self.display_player_cards(player)
 
@@ -133,127 +149,58 @@ class PokerEngine:
         active_players = [player for player in self.players if player["chips"] > 0 and not player["folded"]]
         return active_players
     
-    def take_bets_button(self):
-        if len(self.community_cards) < 5:
-            self.deal_community_cards(1)
-            self.update_community_cards()
-        else:
-            active_players = self.get_active_players()
-            winners = self.evaluate_winner()
-            if winners:
-                distribute_pot()
-            else:
-                split_pot()
-            self.reset_game()
-        self.update_chip_counts()
-
     def evaluate_hand(self, hand):
-        hand_ranking = [
-            "High Card",
-            "One Pair",
-            "Two Pairs",
-            "Three of a Kind",
-            "Straight",
-            "Flush",
-            "Full House",
-            "Four of a Kind",
-            "Straight Flush",
-            "Royal Flush"
-        ]
-
-        ranks = [card[:-1] for card in hand]
-        suits = [card[-1] for card in hand]
-
-        counter = Counter(ranks)
-        rank_counts = counter.most_common()
-
-        # Check for Royal Flush
-        if set(hand) == {"10♠", "J♠", "Q♠", "K♠", "A♠"} or set(hand) == {"10♡", "J♡", "Q♡", "K♡", "A♡"} or set(hand) == {"10♢", "J♢", "Q♢", "K♢", "A♢"} or set(hand) == {"10♣", "J♣", "Q♣", "K♣", "A♣"}:
-            return hand_ranking.index("Royal Flush")
-
-        # Check for Straight Flush
-        straight_flush_suit = None
-        for suit in suits:
-            if suits.count(suit) >= 5:
-                straight_flush_suit = suit
-                break
-
-        if straight_flush_suit:
-            straight_flush_ranks = [rank for rank, suit in zip(ranks, suits) if suit == straight_flush_suit]
-            straight_flush_ranks.sort(key=lambda x: ranks.index(x) if x != 'A' else -1)
-
-            if len(straight_flush_ranks) >= 5:
-                straight_flush = [rank + straight_flush_suit for rank in straight_flush_ranks[-5:]]
-                if set(straight_flush) == {"2♠", "3♠", "4♠", "5♠", "6♠"} or set(straight_flush) == {"2♡", "3♡", "4♡", "5♡", "6♡"} or set(straight_flush) == {"2♢", "3♢", "4♢", "5♢", "6♢"} or set(straight_flush) == {"2♣", "3♣", "4♣", "5♣", "6♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"3♠", "4♠", "5♠", "6♠", "7♠"} or set(straight_flush) == {"3♡", "4♡", "5♡", "6♡", "7♡"} or set(straight_flush) == {"3♢", "4♢", "5♢", "6♢", "7♢"} or set(straight_flush) == {"3♣", "4♣", "5♣", "6♣", "7♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"4♠", "5♠", "6♠", "7♠", "8♠"} or set(straight_flush) == {"4♡", "5♡", "6♡", "7♡", "8♡"} or set(straight_flush) == {"4♢", "5♢", "6♢", "7♢", "8♢"} or set(straight_flush) == {"4♣", "5♣", "6♣", "7♣", "8♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"5♠", "6♠", "7♠", "8♠", "9♠"} or set(straight_flush) == {"5♡", "6♡", "7♡", "8♡", "9♡"} or set(straight_flush) == {"5♢", "6♢", "7♢", "8♢", "9♢"} or set(straight_flush) == {"5♣", "6♣", "7♣", "8♣", "9♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"6♠", "7♠", "8♠", "9♠", "10♠"} or set(straight_flush) == {"6♡", "7♡", "8♡", "9♡", "10♡"} or set(straight_flush) == {"6♢", "7♢", "8♢", "9♢", "10♢"} or set(straight_flush) == {"6♣", "7♣", "8♣", "9♣", "10♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"7♠", "8♠", "9♠", "10♠", "J♠"} or set(straight_flush) == {"7♡", "8♡", "9♡", "10♡", "J♡"} or set(straight_flush) == {"7♢", "8♢", "9♢", "10♢", "J♢"} or set(straight_flush) == {"7♣", "8♣", "9♣", "10♣", "J♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"8♠", "9♠", "10♠", "J♠", "Q♠"} or set(straight_flush) == {"8♡", "9♡", "10♡", "J♡", "Q♡"} or set(straight_flush) == {"8♢", "9♢", "10♢", "J♢", "Q♢"} or set(straight_flush) == {"8♣", "9♣", "10♣", "J♣", "Q♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"9♠", "10♠", "J♠", "Q♠", "K♠"} or set(straight_flush) == {"9♡", "10♡", "J♡", "Q♡", "K♡"} or set(straight_flush) == {"9♢", "10♢", "J♢", "Q♢", "K♢"} or set(straight_flush) == {"9♣", "10♣", "J♣", "Q♣", "K♣"}:
-                    return hand_ranking.index("Straight Flush")
-                elif set(straight_flush) == {"10♠", "J♠", "Q♠", "K♠", "A♠"} or set(straight_flush) == {"10♡", "J♡", "Q♡", "K♡", "A♡"} or set(straight_flush) == {"10♢", "J♢", "Q♢", "K♢", "A♢"} or set(straight_flush) == {"10♣", "J♣", "Q♣", "K♣", "A♣"}:
-                    return hand_ranking.index("Straight Flush")
-
-        # Check for Four of a Kind
-        if rank_counts[0][1] >= 4:
-            return hand_ranking.index("Four of a Kind")
-
-        # Check for Full House
-        if len(rank_counts) >= 2 and rank_counts[0][1] >= 3 and rank_counts[1][1] >= 2:
-            return hand_ranking.index("Full House")
-
-        # Check for Flush
-        for suit in suits:
-            if suits.count(suit) >= 5:
-                return hand_ranking.index("Flush")
-
-        # Check for Straight
-        if 'A' in ranks:
-            straight_ranks = ['A', '2', '3', '4', '5']
-        else:
-            straight_ranks = sorted(set(ranks), key=lambda x: ranks.index(x))
-
-
-        for i in range(len(straight_ranks) - 4):
-            if straight_ranks[i:i + 5] == ['2', '3', '4', '5', 'A']:
-                return hand_ranking.index("Straight")
-
-        # Check for Three of a Kind
-        if rank_counts[0][1] >= 3:
-            return hand_ranking.index("Three of a Kind")
-
-        # Check for Two Pairs
-        if len(rank_counts) >= 2 and rank_counts[0][1] >= 2 and rank_counts[1][1] >= 2:
-            return hand_ranking.index("Two Pairs")
-
-        # Check for One Pair
-        if rank_counts[0][1] >= 2:
-            return hand_ranking.index("One Pair")
-
-        # High Card
-        return hand_ranking.index("High Card")
-
-    
+        # Add your implementation of hand evaluation here
+        return 0  # Placeholder score for now
 
     def evaluate_winner(self):
         max_score = max(player["score"] for player in self.players)
         winners = [player for player in self.players if player["score"] == max_score]
         return winners
-    
-    def take_bets(self):
-        for player in self.players:
-            # Placeholder logic for taking bets
-            bet_amount = random.randint(1, 10)  # Randomly generate a bet amount
-            player["chips"] -= bet_amount  # Deduct the bet amount from player's chips
+
+    def get_tied_players(self):
+        max_score = max(player["score"] for player in self.players)
+        tied_players = [player for player in self.players if player["score"] == max_score]
+        return tied_players
+
+    def take_bets(self, first_to_act_index=None):
+        active_players = self.get_active_players()
+        num_players = len(active_players)
+        pot = self.pot
+        current_player_index = first_to_act_index
+
+        # Take bets from active players
+        for _ in range(num_players):
+            player = active_players[current_player_index]
+            bet = player["chip_entry"].get()
+            if not bet.isdigit():
+                print("Invalid bet amount. Please enter a numeric value.")
+                return
+            bet = int(bet)
+            if bet > player['chips']:
+                print("Invalid bet amount. You don't have enough chips.")
+                return
+            player['chips'] -= bet
+            pot += bet
+            current_player_index = (current_player_index + 1) % num_players
+
+        self.pot = pot
+        print(f"Total pot: {pot}")
+
+    def distribute_pot(self):
+        winners = self.evaluate_winner()
+        pot = self.pot
+        pot_per_winner = pot // len(winners)
+        for winner in winners:
+            winner["chips"] += pot_per_winner
+
+    def split_pot(self):
+        tied_players = self.evaluate_winner()
+        num_players = len(tied_players)
+        pot = self.pot
+        pot_per_player = pot // num_players
+        for player in tied_players:
+            player["chips"] += pot_per_player
     
     def play_round(self):
         self.deal_hole_cards()
@@ -270,15 +217,28 @@ class PokerEngine:
         for player in self.players:
             hand = player["hand"] + self.community_cards
             player["score"] = self.evaluate_hand(hand)
+
         winners = self.evaluate_winner()
+
         if winners:
+            pot = sum(player["chips"] for player in self.players)
+            pot_per_winner = pot // len(winners)
             for winner in winners:
-                # Distribute the pot to the winner(s)
-                pass
+                winner["chips"] += pot_per_winner
+            print("Winner(s):")
+            for winner in winners:
+                print(winner["name"])
         else:
-            # Split the pot among the tied players
-            pass
+            tied_players = self.get_tied_players()
+            pot = sum(player["chips"] for player in tied_players)
+            pot_per_player = pot // len(tied_players)
+            for player in tied_players:
+                player["chips"] += pot_per_player
+            print("Tied Players:")
+            for player in tied_players:
+                print(player["name"])
         self.reset_game()
+
 # Create the main window
 window = tk.Tk()
 window.title("Texas Hold'em Poker")
@@ -369,11 +329,11 @@ engine.create_players()
 # Create labels for hand winners and continue playing option
 winner_label = tk.Label(window, text="Winner: ", font=("Arial", 12))
 winner_label.pack()
-continue_label = tk.Label(window, text="Continue playing?", font=("Arial", 12))
-continue_label.pack()
+
 continue_var = tk.BooleanVar()
-continue_checkbox = tk.Checkbutton(window, variable=continue_var)
+continue_checkbox = tk.Checkbutton(window, text="Continue playing?", variable=continue_var, font=("Arial", 12))
 continue_checkbox.pack()
+
 
 def update_chip_counts():
     for player in engine.players:
@@ -391,21 +351,6 @@ def update_community_cards():
         card_label.image = card_image_tk
         card_label.pack(fill="both", expand=True)
 
-def distribute_pot():
-    winners = engine.evaluate_winner()
-    pot = sum(player["chips"] for player in engine.players)
-    pot_per_winner = pot // len(winners)
-    for winner in winners:
-        winner["chips"] += pot_per_winner
-
-def split_pot():
-    tied_players = engine.evaluate_winner()
-    num_players = len(tied_players)
-    pot = sum(player["chips"] for player in tied_players)
-    pot_per_player = pot // num_players
-    for player in tied_players:
-        player["chips"] += pot_per_player
-
 def reset_game():
     engine.reset_game()
     update_community_cards()
@@ -422,17 +367,18 @@ def deal_community_button():
     engine.take_bets()
 
 play_round_button = tk.Button(window, text="Play Round", command=play_round_button)
-play_round_button.pack(pady=10)
+play_round_button.pack(side=tk.LEFT, padx=10, pady=10)
 
 deal_community_button = tk.Button(window, text="Deal Community", command=deal_community_button)
-deal_community_button.pack(pady=10)
+deal_community_button.pack(side=tk.LEFT, padx=10, pady=10)
+
 
 # Simulation Loop
 num_rounds = 1
 engine.play_round()
 # Update the chip count labels
 for i, player in enumerate(engine.players):
-        chip_count_labels[i].config(text=f"Chips: {player['chips']}")
+    chip_count_labels[i].config(text=f"Chips: {player['chips']}")
 
 # Start the GUI event loop
 window.mainloop()
