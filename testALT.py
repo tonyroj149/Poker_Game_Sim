@@ -75,7 +75,6 @@ class PokerEngine:
 
     def create_players(self):
         for i in range(self.num_players):
-            x, y = player_coords[i]
             player = {
                 "name": f"Player {i+1}",
                 "chips": self.starting_chips,
@@ -85,12 +84,7 @@ class PokerEngine:
                 "bet": random.randint(5, 10),  # Random bet between 5 and 10
                 "chip_count_label": tk.Label(window, text='test font', font=("Arial", 10))  # Create a label for chip count
             }
-            # Calculate the offset for the chip count label
-            offset_x = x + player_radius + 30
-            offset_y = y - 10
-
-            # Position the chip count label to the side of the player icon
-            player["chip_count_label"].place(x=offset_x, y=offset_y)
+            player["chip_count_label"].place(x=x+player_radius+5, y=y+20)  # Position label below player icon
             self.players.append(player)
 
     def get_current_player(self):
@@ -99,15 +93,14 @@ class PokerEngine:
     def deal_hole_cards(self):
         deck = self.create_deck()
         num_players = len(self.players)
-        start_index = (self.small_blind_index + 1) % num_players
+        start_index = self.small_blind_index
 
-        # Deal hole cards starting from the player to the left of the button (small blind)
+        # Deal hole cards starting from the player after the big blind position
         for i in range(num_players):
             player_index = (start_index + i) % num_players
             player = self.players[player_index]
             player["hand"] = [deck.pop(), deck.pop()]
             self.display_player_cards(player)
-
 
     def create_deck(self):
         ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']  # Fixed the rank "10" to "T"
@@ -171,25 +164,6 @@ class PokerEngine:
                 card_label.configure(image=card_image_tk)
                 card_label.image = card_image_tk
 
-    def perform_action(self, action):
-        player = self.get_current_player()
-        if action == "Check":
-            print(f"{player['name']} checks.")
-        elif action == "Bet":
-            print(f"{player['name']} bets.")
-        elif action == "Raise":
-            print(f"{player['name']} raises.")
-        elif action == "Call":
-            print(f"{player['name']} calls.")
-        elif action == "Fold":
-            print(f"{player['name']} folds.")
-            player["folded"] = True
-        else:
-            print("Invalid action.")
-            return
-
-        self.next_player()
-        self.display_player_cards(player)
 
     def reset_game(self):
         self.community_cards = []
@@ -315,8 +289,7 @@ class PokerEngine:
     
     def initialize_game(self):
         self.create_players()
-        self.reset_game()
-        self.play_round()
+        #self.reset_game()
 
 # Create the main window
 window_bg_color = "grey"
@@ -340,7 +313,7 @@ table_y = (600 - table_height) // 2
 table_canvas.create_oval(table_x, table_y, table_x + table_width, table_y + table_height, outline="brown", width=2)
 
 # Define player positions on the elliptical table
-num_players = 4
+num_players = 8
 center_x = table_x + table_width / 2
 center_y = table_y + table_height / 2
 radius_x = table_width / 2
@@ -394,6 +367,17 @@ table_canvas.create_image(pot_icon_x, pot_icon_y, image=pot_icon)
 # Calculate the default player radius based on the table width and number of players
 player_radius = min(table_width, table_height) / (2 * num_players)
 
+# Initialize the PokerEngine
+engine = PokerEngine(num_players, starting_chips=1000)
+
+# Create the players
+engine.create_players()
+
+def start_game():
+    engine.initialize_game()
+    engine.play_round()
+
+
 # Create labels for hand winners and continue playing option
 winner_label = tk.Label(window, text="Winner: ", font=("Arial", 12))
 winner_label.pack()
@@ -419,25 +403,15 @@ def update_community_cards():
         card_label.pack(fill="both", expand=True)
 
 # Create the buttons
-play_round_button = tk.Button(window, text="Play Round", command=lambda:engine.play_round())
+play_round_button = tk.Button(window, text="Play Round", command=start_game)
 play_round_button.place(x=20, y=620)
 
-deal_community_button = tk.Button(window, text="Deal Community", command=lambda:engine.deal_community_cards(3))
+deal_community_button = tk.Button(window, text="Deal Community", command=engine.deal_community_cards(3))
 deal_community_button.place(x=120, y=620)
 
-# Create the action buttons
-check_button = tk.Button(window, text="Check", width=8, command=lambda: engine.perform_action("Check"))
-check_button.place(x= center_x + center_x/2,y=620)
+# Simulation Loop
 
-# Initialize the PokerEngine
-engine = PokerEngine(num_players, starting_chips=1000)
-
-# Create the players
-engine.create_players()
-
-def start_game():
-    engine.initialize_game()
-    engine.play_round()
+# engine.play_round()
 
 # Update the chip count labels
 for i, player in enumerate(engine.players):
