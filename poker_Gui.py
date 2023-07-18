@@ -1,224 +1,438 @@
-import math
-import pyglet
-from playerHand import *
-from pokerEngine import start_hand
-from PIL import Image
+import tkinter as tk
+import numpy as np
+from PIL import Image, ImageTk
+import random
+from collections import Counter
 
-WINDOW_SIZE_X, WINDOW_SIZE_Y = 1000, 750
+card_images = {
+    "2♠": "2s.png",
+    "3♠": "3s.png",
+    "4♠": "4s.png",
+    "5♠": "5s.png",
+    "6♠": "6s.png",
+    "7♠": "7s.png",
+    "8♠": "8s.png",
+    "9♠": "9s.png",
+    "10♠": "Ts.png",
+    "J♠": "Js.png",
+    "Q♠": "Qs.png",
+    "K♠": "Ks.png",
+    "A♠": "As.png",
+    "2♡": "2h.png",
+    "3♡": "3h.png",
+    "4♡": "4h.png",
+    "5♡": "5h.png",
+    "6♡": "6h.png",
+    "7♡": "7h.png",
+    "8♡": "8h.png",
+    "9♡": "9h.png",
+    "10♡": "Th.png",
+    "J♡": "Jh.png",
+    "Q♡": "Qh.png",
+    "K♡": "Kh.png",
+    "A♡": "Ah.png",
+    "2♢": "2d.png",
+    "3♢": "3d.png",
+    "4♢": "4d.png",
+    "5♢": "5d.png",
+    "6♢": "6d.png",
+    "7♢": "7d.png",
+    "8♢": "8d.png",
+    "9♢": "9d.png",
+    "10♢": "Td.png",
+    "J♢": "Jd.png",
+    "Q♢": "Qd.png",
+    "K♢": "Kd.png",
+    "A♢": "Ad.png",
+    "2♣": "2c.png",
+    "3♣": "3c.png",
+    "4♣": "4c.png",
+    "5♣": "5c.png",
+    "6♣": "6c.png",
+    "7♣": "7c.png",
+    "8♣": "8c.png",
+    "9♣": "9c.png",
+    "10♣": "Tc.png",
+    "J♣": "Jc.png",
+    "Q♣": "Qc.png",
+    "K♣": "Kc.png",
+    "A♣": "Ac.png"
+}
 
-# Open the background image
-backgroundImage = Image.open('bgimage.jpg')
 
-# Resize the background image
-resized_backgroundImage = backgroundImage.resize((WINDOW_SIZE_X, WINDOW_SIZE_Y))
+class PokerEngine:
+    def __init__(self, num_players, starting_chips):
+        self.num_players = num_players
+        self.starting_chips = starting_chips
+        self.players = []
+        self.community_cards = []
 
-# Create a Pyglet window with the specified size
-new_window = pyglet.window.Window(width=WINDOW_SIZE_X, height=WINDOW_SIZE_Y)
+    def create_players(self):
+        for i in range(self.num_players):
+            player = {
+                "name": f"Player {i+1}",
+                "chips": self.starting_chips,
+                "hand": [],
+                "score": 0
+            }
+            self.players.append(player)
+            chip_count_label = tk.Label(window, text=f"Chips: {player['chips']}", font=("Arial", 10))
+            chip_count_label.place(x=player_coords[i][0] + player_radius + 5, y=player_coords[i][1] + 20)
+            player["chip_count_label"] = chip_count_label
 
-# Define the number of players and empty lists for positions and sprites
+    def deal_hole_cards(self):
+        deck = self.create_deck()
+        for player in self.players:
+            player["hand"] = [deck.pop(), deck.pop()]
+            self.display_player_cards(player)
 
-player_Count = 6
-SMALL_BLIND = 5
-BIG_BLIND = 10
+    def display_player_cards(self, player):
+        x, y = player_coords[self.players.index(player)]
+        for i in range(len(player["hand"])):
+            image_path = "facedown.png"  # Path to the face-down card image
+            card_image = Image.open(image_path).resize((50, 70))
+            card_image_tk = ImageTk.PhotoImage(card_image)
+            card_label = tk.Label(window, image=card_image_tk)
+            card_label.image = card_image_tk
+            card_label.place(x=x - 50 + (i * 30), y=y + player_radius + 5)
+
+    def create_deck(self):
+        ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        suits = ['♠', '♡', '♢', '♣']
+        deck = [rank + suit for rank in ranks for suit in suits]
+        random.shuffle(deck)
+        return deck
+
+    def deal_community_cards(self, num_cards):
+        deck = self.create_deck()
+        for _ in range(num_cards):
+            card = deck.pop()
+            self.community_cards.append(card)
+            self.display_community_cards()
+
+    def display_community_cards(self):
+        for i, card in enumerate(self.community_cards):
+            x = start_x + i * (max_card_width + card_frame_padding)
+            card_frame = tk.Frame(window, width=max_card_width, height=max_card_height, bg="white", highlightthickness=2, highlightbackground="black")
+            card_frame.place(x=x, y=y)
+            image_path = card_images[card]
+            card_image = Image.open(image_path).resize((max_card_width - 10, max_card_height - 10))
+            card_image_tk = ImageTk.PhotoImage(card_image)
+            card_label = tk.Label(card_frame, image=card_image_tk)
+            card_label.image = card_image_tk  # Store a reference to the image to prevent garbage collection
+            card_label.pack(fill="both", expand=True)
+
+    def reset_game(self):
+        self.community_cards = []
+        for player in self.players:
+            player["hand"] = []
+            player["score"] = 0
+
+    def get_active_players(self):
+        active_players = [player for player in self.players if player["chips"] > 0]
+        return active_players
+    def evaluate_hand(self, hand):
+        hand_ranking = [
+            "High Card",
+            "One Pair",
+            "Two Pairs",
+            "Three of a Kind",
+            "Straight",
+            "Flush",
+            "Full House",
+            "Four of a Kind",
+            "Straight Flush",
+            "Royal Flush"
+        ]
+
+        ranks = [card[:-1] for card in hand]
+        suits = [card[-1] for card in hand]
+
+        counter = Counter(ranks)
+        rank_counts = counter.most_common()
+
+        # Check for Royal Flush
+        if set(hand) == {"10♠", "J♠", "Q♠", "K♠", "A♠"} or set(hand) == {"10♡", "J♡", "Q♡", "K♡", "A♡"} or set(hand) == {"10♢", "J♢", "Q♢", "K♢", "A♢"} or set(hand) == {"10♣", "J♣", "Q♣", "K♣", "A♣"}:
+            return hand_ranking.index("Royal Flush")
+
+        # Check for Straight Flush
+        straight_flush_suit = None
+        for suit in suits:
+            if suits.count(suit) >= 5:
+                straight_flush_suit = suit
+                break
+
+        if straight_flush_suit:
+            straight_flush_ranks = [rank for rank, suit in zip(ranks, suits) if suit == straight_flush_suit]
+            straight_flush_ranks.sort(key=lambda x: ranks.index(x) if x != 'A' else -1)
+
+            if len(straight_flush_ranks) >= 5:
+                straight_flush = [rank + straight_flush_suit for rank in straight_flush_ranks[-5:]]
+                if set(straight_flush) == {"2♠", "3♠", "4♠", "5♠", "6♠"} or set(straight_flush) == {"2♡", "3♡", "4♡", "5♡", "6♡"} or set(straight_flush) == {"2♢", "3♢", "4♢", "5♢", "6♢"} or set(straight_flush) == {"2♣", "3♣", "4♣", "5♣", "6♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"3♠", "4♠", "5♠", "6♠", "7♠"} or set(straight_flush) == {"3♡", "4♡", "5♡", "6♡", "7♡"} or set(straight_flush) == {"3♢", "4♢", "5♢", "6♢", "7♢"} or set(straight_flush) == {"3♣", "4♣", "5♣", "6♣", "7♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"4♠", "5♠", "6♠", "7♠", "8♠"} or set(straight_flush) == {"4♡", "5♡", "6♡", "7♡", "8♡"} or set(straight_flush) == {"4♢", "5♢", "6♢", "7♢", "8♢"} or set(straight_flush) == {"4♣", "5♣", "6♣", "7♣", "8♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"5♠", "6♠", "7♠", "8♠", "9♠"} or set(straight_flush) == {"5♡", "6♡", "7♡", "8♡", "9♡"} or set(straight_flush) == {"5♢", "6♢", "7♢", "8♢", "9♢"} or set(straight_flush) == {"5♣", "6♣", "7♣", "8♣", "9♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"6♠", "7♠", "8♠", "9♠", "10♠"} or set(straight_flush) == {"6♡", "7♡", "8♡", "9♡", "10♡"} or set(straight_flush) == {"6♢", "7♢", "8♢", "9♢", "10♢"} or set(straight_flush) == {"6♣", "7♣", "8♣", "9♣", "10♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"7♠", "8♠", "9♠", "10♠", "J♠"} or set(straight_flush) == {"7♡", "8♡", "9♡", "10♡", "J♡"} or set(straight_flush) == {"7♢", "8♢", "9♢", "10♢", "J♢"} or set(straight_flush) == {"7♣", "8♣", "9♣", "10♣", "J♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"8♠", "9♠", "10♠", "J♠", "Q♠"} or set(straight_flush) == {"8♡", "9♡", "10♡", "J♡", "Q♡"} or set(straight_flush) == {"8♢", "9♢", "10♢", "J♢", "Q♢"} or set(straight_flush) == {"8♣", "9♣", "10♣", "J♣", "Q♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"9♠", "10♠", "J♠", "Q♠", "K♠"} or set(straight_flush) == {"9♡", "10♡", "J♡", "Q♡", "K♡"} or set(straight_flush) == {"9♢", "10♢", "J♢", "Q♢", "K♢"} or set(straight_flush) == {"9♣", "10♣", "J♣", "Q♣", "K♣"}:
+                    return hand_ranking.index("Straight Flush")
+                elif set(straight_flush) == {"10♠", "J♠", "Q♠", "K♠", "A♠"} or set(straight_flush) == {"10♡", "J♡", "Q♡", "K♡", "A♡"} or set(straight_flush) == {"10♢", "J♢", "Q♢", "K♢", "A♢"} or set(straight_flush) == {"10♣", "J♣", "Q♣", "K♣", "A♣"}:
+                    return hand_ranking.index("Straight Flush")
+
+        # Check for Four of a Kind
+        if rank_counts[0][1] >= 4:
+            return hand_ranking.index("Four of a Kind")
+
+        # Check for Full House
+        if len(rank_counts) >= 2 and rank_counts[0][1] >= 3 and rank_counts[1][1] >= 2:
+            return hand_ranking.index("Full House")
+
+        # Check for Flush
+        for suit in suits:
+            if suits.count(suit) >= 5:
+                return hand_ranking.index("Flush")
+
+        # Check for Straight
+        if 'A' in ranks:
+            straight_ranks = ['A', '2', '3', '4', '5']
+        else:
+            straight_ranks = sorted(set(ranks), key=lambda x: ranks.index(x))
 
 
-position_list = []
-button_position_list = []
-player_sprites = []
+        for i in range(len(straight_ranks) - 4):
+            if straight_ranks[i:i + 5] == ['2', '3', '4', '5', 'A']:
+                return hand_ranking.index("Straight")
 
-# Calculate the desired size of the player icon based on the window size and player count
-PLAYER_ICON_SIZE_X = WINDOW_SIZE_X / 17
-PLAYER_ICON_SIZE_Y = WINDOW_SIZE_Y / 17
+        # Check for Three of a Kind
+        if rank_counts[0][1] >= 3:
+            return hand_ranking.index("Three of a Kind")
 
-BOARD_CARD_SIZE_X = PLAYER_ICON_SIZE_X * 1.2
-BOARD_CARD_SIZE_Y = PLAYER_ICON_SIZE_Y * 1.2
+        # Check for Two Pairs
+        if len(rank_counts) >= 2 and rank_counts[0][1] >= 2 and rank_counts[1][1] >= 2:
+            return hand_ranking.index("Two Pairs")
 
-# Create a Pyglet sprite from the resized background image
-pokerTable_Sprite = pyglet.sprite.Sprite(pyglet.image.ImageData(
-    WINDOW_SIZE_X, WINDOW_SIZE_Y, 'RGB', resized_backgroundImage.tobytes()))
+        # Check for One Pair
+        if rank_counts[0][1] >= 2:
+            return hand_ranking.index("One Pair")
 
-# Load the player icon image
-pokerPlayerIcon = pyglet.image.load('playerIcon.png')
-pokerPlayerIcon_Sprite = pyglet.sprite.Sprite(pokerPlayerIcon)
+        # High Card
+        return hand_ranking.index("High Card")
 
-# Load the dealer button icon image
-dealerButton = pyglet.image.load('dealerButton.png')
-dealerButton_Sprite = pyglet.sprite.Sprite(dealerButton)
-dealerButton_Sprite.update(scale_x=PLAYER_ICON_SIZE_X / dealerButton.width, scale_y=PLAYER_ICON_SIZE_Y / dealerButton.height)
-
-
-class PlayerSprite(pyglet.sprite.Sprite):
-    def __init__(self, image, x, y):
-        super().__init__(image, x, y)
-
-        #create pokerPlayer sprite with name from position list and initial stack varying in some range
-        self.player = pokerPlayer(str(position_list[random.randint(0, len(position_list) - 1)]), random.randrange(800, 2500, 10))
-        self.current_position = ''
-        self.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width  # Scale the sprite
-
-        self.stack_label = pyglet.text.Label(
-            f"${self.player.getStackSize()}",
-            font_name='Arial',
-            font_size=12,
-            x=self.x,
-            y=self.y - 20,
-            anchor_x='center',
-            anchor_y='center'
-        )
-        self.stack_label_BB = pyglet.text.Label(
-            f"{self.player.getStackSize() / BIG_BLIND} BBs",
-            font_name='Arial',
-            font_size=12,
-            x=self.stack_label.x,
-            y=self.stack_label.y - 20,
-            anchor_x='center',
-            anchor_y='center'
-        )
-        self.test_Label = pyglet.text.Label(
-            f"VPIP: {round(self.player.frequencies.get_VPIP() / 100, 2)}",
-            font_name='Arial',
-            font_size=12,
-            x=self.stack_label.x,
-            y=self.stack_label_BB.y - 20,
-            anchor_x='center',
-            anchor_y='center'
-        )
-      
-    def draw(self):
-        super().draw()
-        self.stack_label.draw()
-        self.stack_label_BB.draw()
-        self.test_Label.draw()
-
-class CommunityCards():
-    def __init__(self):
-        self.currentHandCommunity = HandGenerator(player_Count)
-        self.preflop = self.currentHandCommunity.dealPreFlop()
-        self.flop = self.currentHandCommunity.dealFlop()
-        self.turn = self.currentHandCommunity.dealTurn()
-        self.river = self.currentHandCommunity.dealRiver()
-
-        # Load card images and determine their sizes
-        flop_card1_image = pyglet.image.load(self.flop[0] + '.png')
-        flop_card2_image = pyglet.image.load(self.flop[1] + '.png')
-        flop_card3_image = pyglet.image.load(self.flop[2] + '.png')
-        turn_card_image = pyglet.image.load(str(self.turn[0]) + '.png')
-        river_card_image = pyglet.image.load(str(self.river[0]) + '.png')
-
-        self.card_width = flop_card1_image.width / PLAYER_ICON_SIZE_X  # Assuming all cards have the same width
-        self.card_height = flop_card1_image.height / PLAYER_ICON_SIZE_Y  # Assuming all cards have the same height
-
-        # Create batches for efficient rendering
-        self.flop_batch = pyglet.graphics.Batch()
-        self.turn_batch = pyglet.graphics.Batch()
-        self.river_batch = pyglet.graphics.Batch()
-
-        # Create sprites for the community cards and position them
-        self.flop_card1 = pyglet.sprite.Sprite(flop_card1_image, batch=self.flop_batch)
-        self.flop_card1.update(scale_x=BOARD_CARD_SIZE_X / flop_card1_image.width,
-                               scale_y=BOARD_CARD_SIZE_X / flop_card1_image.height)
-
-        self.flop_card2 = pyglet.sprite.Sprite(flop_card2_image, batch=self.flop_batch)
-        self.flop_card2.update(scale_x=BOARD_CARD_SIZE_X / flop_card2_image.width,
-                               scale_y=BOARD_CARD_SIZE_X / flop_card2_image.height)
-
-        self.flop_card3 = pyglet.sprite.Sprite(flop_card3_image, batch=self.flop_batch)
-        self.flop_card3.update(scale_x=BOARD_CARD_SIZE_X / flop_card3_image.width,
-                               scale_y=BOARD_CARD_SIZE_X / flop_card3_image.height)
-
-        self.turn_card = pyglet.sprite.Sprite(turn_card_image, batch=self.turn_batch)
-        self.turn_card.update(scale_x=BOARD_CARD_SIZE_X / turn_card_image.width,
-                              scale_y=BOARD_CARD_SIZE_X / turn_card_image.height)
-
-        self.river_card = pyglet.sprite.Sprite(river_card_image, batch=self.river_batch)
-        self.river_card.update(scale_x=BOARD_CARD_SIZE_X / river_card_image.width,
-                               scale_y=BOARD_CARD_SIZE_X / river_card_image.height)
-
-    def set_window_size(self, window_width, window_height):
-        self.calculate_positions(window_width, window_height)
-
-    def calculate_positions(self, window_width, window_height):
-        # Calculate the position of the center of the window
-        center_x = window_width // 2
-        center_y = window_height // 2
-
-        # Update the position of flop cards
-        self.flop_card1.x = center_x - window_width / 6
-        self.flop_card1.y = center_y
-
-        self.flop_card2.x = self.flop_card1.x + self.flop_card2.width
-        self.flop_card2.y = center_y
-
-        self.flop_card3.x = self.flop_card2.x + self.flop_card3.width
-        self.flop_card3.y = center_y
-
-        # Update the position of turn card
-        self.turn_card.x = self.flop_card3.x + self.turn_card.width
-        self.turn_card.y = center_y
-
-        # Update the position of river card
-        self.river_card.x = self.turn_card.x + self.river_card.width
-        self.river_card.y = center_y
     
-    def setPlayer(self, name, firstCard, secondCard):
-        return 0
 
-    def get_batches(self):
-        return self.flop_batch, self.turn_batch, self.river_batch
-
-    def get_cards(self):
-        return [self.flop_card1, self.flop_card2, self.flop_card3, self.turn_card, self.river_card]
-
-
-# Organize player seat positions geometrically
-def seating_position_Generator(total_players):
-    ellipse_center = (WINDOW_SIZE_X / 2, WINDOW_SIZE_Y / 2)
-    ellipse_radius_x, ellipse_radius_y = WINDOW_SIZE_X / 3, WINDOW_SIZE_Y / 3
-    num_divisions = total_players
-
-    for i in range(total_players):
-        angle = 2 * math.pi * i / num_divisions
-        x = round(ellipse_center[0] + math.cos(angle) * ellipse_radius_x - (PLAYER_ICON_SIZE_X / 2),2)
-        button_X = x - PLAYER_ICON_SIZE_X
-        y = round(ellipse_center[1] + math.sin(angle) * ellipse_radius_y - (PLAYER_ICON_SIZE_Y / 2), 2)
-        button_Y = y +  PLAYER_ICON_SIZE_Y
-        position_list.append((x, y))
-        button_position_list.append((button_X, button_Y))
-    return position_list
-
-def buttonPosition():
+    def evaluate_winner(self):
+        max_score = max(player["score"] for player in self.players)
+        winners = [player for player in self.players if player["score"] == max_score]
+        return winners
     
-    for i, j in button_position_list:
-        dealerButton_Sprite.update(x = i , y = j , scale_x=PLAYER_ICON_SIZE_X / dealerButton.width,
-                                scale_y=PLAYER_ICON_SIZE_Y / dealerButton.height)
+    def take_bets(self):
+        for player in self.players:
+            # Placeholder logic for taking bets
+            bet_amount = random.randint(1, 10)  # Randomly generate a bet amount
+            player["chips"] -= bet_amount  # Deduct the bet amount from player's chips
+    
+    def play_round(self):
+        self.deal_hole_cards()
+        self.take_bets()
+        if len(self.community_cards) < 5:
+            self.deal_community_cards(3)
+            self.take_bets()
+        if len(self.community_cards) < 5:
+            self.deal_community_cards(1)
+            self.take_bets()
+        if len(self.community_cards) < 5:
+            self.deal_community_cards(1)
+            self.take_bets()
+        for player in self.players:
+            hand = player["hand"] + self.community_cards
+            player["score"] = self.evaluate_hand(hand)
+        winners = self.evaluate_winner()
+        if winners:
+            for winner in winners:
+                # Distribute the pot to the winner(s)
+                pass
+        else:
+            # Split the pot among the tied players
+            pass
+        self.reset_game()
+# Create the main window
+window = tk.Tk()
+window.title("Texas Hold'em Poker")
 
-seating_position_Generator(player_Count)
-# Generate the seating positions and create sprites for each position
-for i, position in enumerate(position_list):
-    stack_size = 1000  # Set the stack size for the player
-    sprite = PlayerSprite(image=pokerPlayerIcon, x=position[0], y=position[1])
-    sprite.scale = PLAYER_ICON_SIZE_X / pokerPlayerIcon.width
-    player_sprites.append(sprite)
+# Set the window size and position
+window.geometry("900x700")
+window.resizable(False, False)
 
-start_hand()
+# Create the table canvas
+table_canvas = tk.Canvas(window, width=800, height=600, bg="green")
+table_canvas.pack(pady=20)
 
-@new_window.event
-def on_draw():
-    new_window.clear()
-    pokerTable_Sprite.draw()
-    dealerButton_Sprite.draw()
+# Draw the elliptical table
+table_width = 700
+table_height = 500
+table_x = (800 - table_width) // 2
+table_y = (600 - table_height) // 2
+table_canvas.create_oval(table_x, table_y, table_x + table_width, table_y + table_height, outline="brown", width=2)
 
-    for sprite in player_sprites:
-        sprite.draw()
+# Define player positions on the elliptical table
+num_players = 8
+center_x = table_x + table_width / 2
+center_y = table_y + table_height / 2
+radius_x = table_width / 2
+radius_y = table_height / 2
 
-# Event handler for mouse press
-@new_window.event
-def on_mouse_press(x, y, button, modifiers):
-    for sprite in player_sprites:
-        if sprite.x < x < sprite.x + sprite.width and sprite.y < y < sprite.y + sprite.height:
-            sprite.on_button_click(x, y, button, modifiers)
+# Calculate equidistant angles for player positions
+angle_step = 2 * np.pi / num_players
+player_angles = [i * angle_step for i in range(num_players)]
 
-# Start the game
-pyglet.app.run()
+# Calculate player coordinates on the elliptical table
+player_coords = [(center_x + radius_x * np.cos(angle),
+                  center_y + radius_y * np.sin(angle)) for angle in player_angles]
 
+# Draw players on the table
+player_radius = 20
+chip_count_labels = []  # List to store chip count labels
+for i, (x, y) in enumerate(player_coords):
+    table_canvas.create_oval(x - player_radius, y - player_radius,
+                             x + player_radius, y + player_radius, fill="white")
+    player_label = tk.Label(window, text=f"Player {i+1}", font=("Arial", 10))
+    player_label.place(x=x+player_radius+5, y=y)  # Position label next to player icon
+    chip_count_label = tk.Label(window, text="Chips: 0", font=("Arial", 10))
+    chip_count_label.place(x=x+player_radius+5, y=y+20)  # Position label below player icon
+    chip_count_labels.append(chip_count_label)
 
+# Create frames for community cards
+num_community_cards = 5
+card_frame_width = 80
+card_frame_height = 120
+card_frame_padding = 10
+
+# Calculate the available width for the frames
+available_width = table_width - (num_community_cards * card_frame_padding)
+
+# Calculate the maximum width and height to fit within the available space
+max_card_width = min(card_frame_width, available_width // num_community_cards)
+max_card_height = min(card_frame_height, table_height)
+
+# Calculate the starting x-coordinate for the frames with the offset
+start_x = table_x + (table_width - (max_card_width * num_community_cards + (num_community_cards - 1) * card_frame_padding)) / 2
+
+# Calculate the y-coordinate for the frames
+y = table_y + (table_height - max_card_height) / 2
+
+for i in range(num_community_cards):
+    x = start_x + i * (max_card_width + card_frame_padding)
+    card_frame = tk.Frame(window, width=max_card_width, height=max_card_height, bg="white", highlightthickness=2, highlightbackground="black")
+    card_frame.place(x=x, y=y)
+
+# Load the pot icon image and resize it
+pot_icon_path = "pot_icon.png"
+pot_icon_size = (30, 30)
+pot_icon_image = Image.open(pot_icon_path).resize(pot_icon_size)
+pot_icon = ImageTk.PhotoImage(pot_icon_image)
+
+# Calculate the position of the pot icon
+pot_icon_x = center_x - pot_icon_size[0] // 2
+pot_icon_y = y + max_card_height + 10  # Position below the card frames
+
+# Create the pot icon on the table canvas
+table_canvas.create_image(pot_icon_x, pot_icon_y, image=pot_icon)
+
+# Initialize the PokerEngine
+engine = PokerEngine(num_players, starting_chips=1000)
+engine.create_players()
+
+# Create labels for hand winners and continue playing option
+winner_label = tk.Label(window, text="Winner: ", font=("Arial", 12))
+winner_label.pack()
+continue_label = tk.Label(window, text="Continue playing?", font=("Arial", 12))
+continue_label.pack()
+continue_var = tk.BooleanVar()
+continue_checkbox = tk.Checkbutton(window, variable=continue_var)
+continue_checkbox.pack()
+
+def update_chip_counts():
+    for player in engine.players:
+        player["chip_count_label"].config(text=f"Chips: {player['chips']}")
+
+def update_community_cards():
+    for i, card in enumerate(engine.community_cards):
+        x = start_x + i * (max_card_width + card_frame_padding)
+        card_frame = tk.Frame(window, width=max_card_width, height=max_card_height, bg="white", highlightthickness=2, highlightbackground="black")
+        card_frame.place(x=x, y=y)
+        image_path = card_images[card]
+        card_image = Image.open(image_path).resize((max_card_width - 10, max_card_height - 10))
+        card_image_tk = ImageTk.PhotoImage(card_image)
+        card_label = tk.Label(card_frame, image=card_image_tk)
+        card_label.image = card_image_tk
+        card_label.pack(fill="both", expand=True)
+
+def distribute_pot():
+    winners = engine.evaluate_winner()
+    pot = sum(player["chips"] for player in engine.players)
+    pot_per_winner = pot // len(winners)
+    for winner in winners:
+        winner["chips"] += pot_per_winner
+
+def split_pot():
+    tied_players = engine.evaluate_winner()
+    num_players = len(tied_players)
+    pot = sum(player["chips"] for player in tied_players)
+    pot_per_player = pot // num_players
+    for player in tied_players:
+        player["chips"] += pot_per_player
+
+def reset_game():
+    engine.reset_game()
+    update_community_cards()
+    winner_label.config(text="Winner: ")
+    continue_var.set(False)
+
+def play_round_button():
+    engine.play_round()
+    update_chip_counts()
+
+def deal_community_button():
+    engine.deal_community_cards(3)
+    update_community_cards()
+    engine.take_bets()
+
+def take_bets_button():
+    if len(engine.community_cards) < 5:
+        engine.deal_community_cards(1)
+        update_community_cards()
+    else:
+        winners = engine.evaluate_winner()
+        if winners:
+            distribute_pot()
+        else:
+            split_pot()
+        reset_game()
+    update_chip_counts()
+
+play_round_button = tk.Button(window, text="Play Round", command=play_round_button)
+play_round_button.pack(pady=10)
+
+deal_community_button = tk.Button(window, text="Deal Community", command=deal_community_button)
+deal_community_button.pack(pady=10)
+
+take_bets_button = tk.Button(window, text="Take Bets and Evaluate", command=take_bets_button)
+take_bets_button.pack(pady=10)
+
+# Simulation Loop
+num_rounds = 1
+engine.play_round()
+# Update the chip count labels
+for i, player in enumerate(engine.players):
+        chip_count_labels[i].config(text=f"Chips: {player['chips']}")
+
+# Start the GUI event loop
+window.mainloop()
