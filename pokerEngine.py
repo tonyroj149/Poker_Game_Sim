@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import Tk, Frame, Button, SE, SW
+from tkinter import Tk, Frame, Button, SE, SW, W
 import numpy as np
 from PIL import Image, ImageTk
 import random
@@ -76,17 +76,25 @@ class PokerEngine:
         self.deck = []
         self.burned_cards = []
         self.muck = []
+        self.last_bet = 0
     
     def set_button_player(self, player_index):
-        self.button_position = player_index
+        self.button_position = random.randint(0, self.num_players - 1)
     
-    def get_button_player(self):
-        return self.players[self.button_position]
+    def rotate_button_player(self):
+        self.button_position = (self.button_position + 1) % self.num_players
 
+    def get_button_position(self):
+        return self.button_position
 
     def create_players(self):
         for i in range(self.num_players):
             x, y = player_coords[i]
+
+            # Create a frame to hold player labels
+            player_label_container = tk.Frame(window)
+            player_label_container.place(x=x, y=y, anchor=W)
+
             player = {
                 "name": f"Player {i+1}",
                 "chips": self.starting_chips,
@@ -94,14 +102,10 @@ class PokerEngine:
                 "score": 0,
                 "folded": False,
                 "bet": random.randint(5, 10),  # Random bet between 5 and 10
-                "chip_count_label": tk.Label(window, text='test font', font=("Arial", 10))  # Create a label for chip count
+                "chip_count_label": tk.Label(player_label_container, text='test font', font=("Arial", 10))  # Create a label for chip count
             }
-            # Calculate the offset for the chip count label
-            offset_x = x + player_radius + 30
-            offset_y = y - 10
-
             # Position the chip count label to the side of the player icon
-            player["chip_count_label"].place(x=offset_x, y=offset_y)
+            player["chip_count_label"].pack(side="left")
             self.players.append(player)
 
     def get_current_player(self):
@@ -189,24 +193,44 @@ class PokerEngine:
 
     def perform_action(self, action):
         player = self.get_current_player()
-        if action == "Check":
+
+        if action == 1:
             print(f"{player['name']} checks.")
-        elif action == "Bet":
-            print(f"{player['name']} bets.")
-        elif action == "Raise":
-            print(f"{player['name']} raises.")
-        elif action == "Call":
-            print(f"{player['name']} calls.")
-        elif action == "Fold":
+
+        elif action == 2:
+            bet = random.randint(5, 30)  # Retrieve the bet amount
+            if bet > player["chips"]:
+                print("Invalid bet amount: You do not have enough chips.")
+                return
+            print(f"{player['name']} bets {bet}.")
+            player["chips"] -= bet
+            player["bet"] = bet
+            self.last_bet = bet
+            self.pot += bet
+
+        elif action == 3:
+            if player["bet"] == 0:
+                print(f"{player['name']} can't call because there's no previous bet to match.")
+            else:
+                to_call = self.get_previous_bet() - player["bet"]  # Implement this method to get the previous bet amount
+                if to_call <= player["chips"]:
+                    print(f"{player['name']} calls.")
+                    player["chips"] -= to_call
+                    self.pot += to_call
+                else:
+                    print(f"{player['name']} can't call because there are not enough chips.")
+
+        elif action == 4:
             print(f"{player['name']} folds.")
             player["folded"] = True
+
         else:
             print("Invalid action.")
             return
 
-        self.next_player()
-        self.display_player_cards(player)
-
+    def get_previous_bet(self):
+        return self.last_bet
+    
     def reset_game(self):
             self.community_cards = []
             for player in self.players:
@@ -250,29 +274,33 @@ class PokerEngine:
             return
 
         if len(active_players) > 1:
-            button_index = self.players.index(self.get_button_player())  # Assuming you have a method to get the button player
+            button_index = self.button_position
             first_to_act_index = (button_index + 1) % num_players
 
         current_player_index = first_to_act_index
-
-        print(f'Press an an action button')
+        remaining_players = active_players.copy()  # Create a copy of active players list
 
         # Take bets from active players
-        for _ in range(num_players):
-            player = active_players[current_player_index]
+        while remaining_players:
+            player = remaining_players[current_player_index]
+            if player["folded"]:
+                remaining_players.remove(player)  # Remove folded player from the list
+            else:
+                user_input = input(f"{player['name']}, what is your move? 1: Check, 2: Bet, 3: Call, 4: Fold ")
+                try:
+                    move = int(user_input)
+                    if 1 <= move <= 4:
+                        self.perform_action(move)
+                        current_player_index = (current_player_index + 1) % len(remaining_players)
+                        if self.get_previous_bet() == 0:
+                            break  # If the last action was a check, exit the loop
+                    else:
+                        print("Invalid input: Enter an integer between 1-4")
+                except ValueError:
+                    print("Invalid input: Enter an integer only")
 
-            bet = random.randint(5, 10)  # Retrieve the bet amount
-            if bet > player["chips"]:
-                print("Invalid bet amount. You don't have enough chips.")
-                return
+        print(f"Total pot: {self.pot}")
 
-            player["chips"] -= bet
-            player["bet"] = bet  # Store the bet amount in the player dictionary
-            pot += bet
-            current_player_index = (current_player_index + 1) % num_players
-
-        self.pot = pot
-        print(f"Total pot: {pot}")
 
     def distribute_pot(self):
         winners = self.evaluate_winner()
@@ -307,8 +335,15 @@ class PokerEngine:
     def play_round(self):
         self.create_deck()
         self.deal_hole_cards()
-            
+        
+        if self.button_position is None:
+            self.set_button_player()
         active_players = self.get_active_players()
+
+        # Reveal cards for remaining active players
+        for player in active_players:
+            self.display_player_cards(player, is_active=True)
+            
         if not active_players:
             print("No active players remaining.")
             return
@@ -321,18 +356,6 @@ class PokerEngine:
         self.deal_river()
         print(f'The board is {self.community_cards}')
         print(f'The burned cards: {self.burned_cards}')
-        
-        # if len(self.community_cards) < 5:
-        #     self.deal_community_cards(3)
-        #     self.take_bets()
-        
-        # if len(self.community_cards) < 5:
-        #     self.deal_community_cards(1)
-        #     self.take_bets()
-        
-        # if len(self.community_cards) < 5:
-        #     self.deal_community_cards(1)
-        #     self.take_bets()
         
         for player in self.players:
             hand = player["hand"] + self.community_cards
