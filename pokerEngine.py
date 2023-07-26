@@ -1,8 +1,10 @@
 import tkinter as tk
+from tkinter import Tk, Frame, Button, SE, SW
 import numpy as np
 from PIL import Image, ImageTk
 import random
 from collections import Counter
+import time
 
 card_images = {
     "2♠": "2s.png",
@@ -59,7 +61,6 @@ card_images = {
     "A♣": "Ac.png"
 }
 
-
 class PokerEngine:
     def __init__(self, num_players, starting_chips):
         self.num_players = num_players
@@ -71,6 +72,16 @@ class PokerEngine:
         self.small_blind_index = 0
         self.big_blind_index = 0
         self.community_card_labels = []  # Store the community card labels
+        self.button_position = 0
+        self.deck = []
+        self.burned_cards = []
+        self.muck = []
+    
+    def set_button_player(self, player_index):
+        self.button_position = player_index
+    
+    def get_button_player(self):
+        return self.players[self.button_position]
 
 
     def create_players(self):
@@ -97,7 +108,7 @@ class PokerEngine:
         return self.players[self.current_player_index]
 
     def deal_hole_cards(self):
-        deck = self.create_deck()
+        self.deck = self.create_deck()
         num_players = len(self.players)
         start_index = (self.small_blind_index + 1) % num_players
 
@@ -105,21 +116,24 @@ class PokerEngine:
         for i in range(num_players):
             player_index = (start_index + i) % num_players
             player = self.players[player_index]
-            player["hand"] = [deck.pop(), deck.pop()]
+            player["hand"] = [self.deck.pop(), self.deck.pop()]
             self.display_player_cards(player)
-
 
     def create_deck(self):
         ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']  # Fixed the rank "10" to "T"
         suits = ['♠', '♡', '♢', '♣']
-        deck = [rank + suit for rank in ranks for suit in suits]
-        random.shuffle(deck)
-        return deck
+        self.deck = [rank + suit for rank in ranks for suit in suits]
+        random.shuffle(self.deck)
+        return self.deck
+    
+    def burn_cards(self, num_cards=None):
+        burn= self.deck.pop(num_cards)
+        return burn
 
     def deal_community_cards(self, num_cards):
-        deck = self.create_deck()
+        self.burned_cards.append(self.burn_cards(1))
         for _ in range(num_cards):
-            card = deck.pop()
+            card = self.deck.pop()
             self.community_cards.append(card)
         self.display_community_cards()
 
@@ -147,20 +161,20 @@ class PokerEngine:
         x, y = player_coords[player_index]
 
         num_cards = len(player["hand"])
-        angle_step = 2 * np.pi / num_cards  # Calculate the angle step between cards
+        card_width = 50  # Width of each card
+
+        total_width = num_cards * card_width  # Calculate the total width of all cards
+
+        start_x = x - (total_width / 2)  # Starting x-coordinate for the first card
 
         for i in range(num_cards):
-            angle = i * angle_step
-            offset_x = player_radius * np.cos(angle)
-            offset_y = player_radius * np.sin(angle)
-
-            card_x = x + offset_x - 25  # Adjust the card position
-            card_y = y + offset_y + 5   # Adjust the card position
+            card_x = start_x + (card_width * i)  # Adjust the card position
+            card_y = y + 5  # Adjust the card position
 
             image_path = "facedown.png"  # Path to the face-down card image
             card_image = Image.open(image_path).resize((50, 70))
             card_image_tk = ImageTk.PhotoImage(card_image)
-            
+
             # Create a label for the card with the facedown image
             card_label = tk.Label(window, image=card_image_tk)
             card_label.image = card_image_tk
@@ -170,6 +184,8 @@ class PokerEngine:
                 # Reveal the card for active players
                 card_label.configure(image=card_image_tk)
                 card_label.image = card_image_tk
+
+
 
     def perform_action(self, action):
         player = self.get_current_player()
@@ -192,10 +208,18 @@ class PokerEngine:
         self.display_player_cards(player)
 
     def reset_game(self):
-        self.community_cards = []
-        for player in self.players:
-            player["hand"] = []
-            player["score"] = 0
+            self.community_cards = []
+            for player in self.players:
+                player["hand"] = []
+                player["score"] = 0
+                player["folded"] = False
+                player["bet"] = 0
+                player["chips"] = self.starting_chips
+            self.pot = 0
+            self.current_player_index = 0
+            self.small_blind_index = 0
+            self.big_blind_index = 0
+
 
     def get_active_players(self):
         active_players = [player for player in self.players if player["chips"] > 0 and not player["folded"]]
@@ -215,23 +239,28 @@ class PokerEngine:
         tied_players = [player for player in self.players if player["score"] == max_score]
         return tied_players
 
-    def take_bets(self, first_to_act_index=None):
+    def take_bets(self):
         active_players = self.get_active_players()
         num_players = len(active_players)
+        first_to_act_index = 0
         pot = self.pot
 
         if num_players == 0:
             print("No active players remaining.")
             return
 
-        if first_to_act_index is None:
-            first_to_act_index = random.randint(0, num_players - 1)
+        if len(active_players) > 1:
+            button_index = self.players.index(self.get_button_player())  # Assuming you have a method to get the button player
+            first_to_act_index = (button_index + 1) % num_players
 
         current_player_index = first_to_act_index
+
+        print(f'Press an an action button')
 
         # Take bets from active players
         for _ in range(num_players):
             player = active_players[current_player_index]
+
             bet = random.randint(5, 10)  # Retrieve the bet amount
             if bet > player["chips"]:
                 print("Invalid bet amount. You don't have enough chips.")
@@ -244,7 +273,6 @@ class PokerEngine:
 
         self.pot = pot
         print(f"Total pot: {pot}")
-
 
     def distribute_pot(self):
         winners = self.evaluate_winner()
@@ -261,34 +289,58 @@ class PokerEngine:
         for player in tied_players:
             player["chips"] += pot_per_player
 
+    def deal_flop(self):
+        self.deal_community_cards(3)
+        self.take_bets()
+        print(f"The flop is {self.community_cards}")
+    
+    def deal_turn(self):
+        self.deal_community_cards(1)
+        self.take_bets()
+        print(f"The turn is {self.community_cards[3]}")
+
+    def deal_river(self):
+        self.deal_community_cards(1)
+        self.take_bets()
+        print(f"The river is {self.community_cards[4]}")
+    
     def play_round(self):
+        self.create_deck()
         self.deal_hole_cards()
-        
+            
         active_players = self.get_active_players()
         if not active_players:
             print("No active players remaining.")
             return
         
         self.take_bets()
+        self.deal_flop()
+        time.sleep(4)
+        self.deal_turn()
+        time.sleep(4)
+        self.deal_river()
+        print(f'The board is {self.community_cards}')
+        print(f'The burned cards: {self.burned_cards}')
         
-        if len(self.community_cards) < 5:
-            self.deal_community_cards(3)
-            self.take_bets()
+        # if len(self.community_cards) < 5:
+        #     self.deal_community_cards(3)
+        #     self.take_bets()
         
-        if len(self.community_cards) < 5:
-            self.deal_community_cards(1)
-            self.take_bets()
+        # if len(self.community_cards) < 5:
+        #     self.deal_community_cards(1)
+        #     self.take_bets()
         
-        if len(self.community_cards) < 5:
-            self.deal_community_cards(1)
-            self.take_bets()
+        # if len(self.community_cards) < 5:
+        #     self.deal_community_cards(1)
+        #     self.take_bets()
         
         for player in self.players:
             hand = player["hand"] + self.community_cards
             player["score"] = self.evaluate_hand(hand)
+            print(player["score"])
 
         winners = self.evaluate_winner()
-
+        
         if winners:
             pot = sum(player["chips"] for player in self.players)
             pot_per_winner = pot // len(winners)
@@ -312,11 +364,11 @@ class PokerEngine:
                 print(player["name"])
         
         self.reset_game()
+        update_chip_counts()  # Call the method to update the chip counts on the GUI
+
     
     def initialize_game(self):
         self.create_players()
-        self.reset_game()
-        self.play_round()
 
 # Create the main window
 window_bg_color = "grey"
@@ -418,25 +470,47 @@ def update_community_cards():
         card_label.image = card_image_tk
         card_label.pack(fill="both", expand=True)
 
-# Create the buttons
-play_round_button = tk.Button(window, text="Play Round", command=lambda:engine.play_round())
-play_round_button.place(x=20, y=620)
+# Create a frame as the container for the poker action buttons
+action_button_container = Frame(window)
+action_button_container.place(relx=1.0, rely=1.0, anchor=SE)
 
-deal_community_button = tk.Button(window, text="Deal Community", command=lambda:engine.deal_community_cards(3))
-deal_community_button.place(x=120, y=620)
+# Create a frame as the container for the poker action buttons
+operating_button_container = Frame(window)
+operating_button_container.place(relx=0, rely=1.0, anchor=SW)
 
-# Create the action buttons
-check_button = tk.Button(window, text="Check", width=8, command=lambda: engine.perform_action("Check"))
-check_button.place(x= center_x + center_x/2,y=620)
+# Create the buttons and add them to the container
+check_button = Button(action_button_container, text="Check")
+bet_button = Button(action_button_container, text="Bet")
+raise_button = Button(action_button_container, text="Raise")
+call_button = Button(action_button_container, text="Call")
+fold_button = Button(action_button_container, text="Fold")
+# deal_community_button = tk.Button(operating_button_container, text="Deal Community", command=lambda:engine.deal_community_cards(3))
+reset_button= tk.Button(operating_button_container, text="Reset", command=lambda: engine.reset_game())
+initialize_button = tk.Button(operating_button_container, text="Start Game", command=lambda:start_game())
+# deal_flop_button = tk.Button(operating_button_container, text="Deal Flop", command=lambda:engine.deal_community_cards(3))
+# deal_turn_button = tk.Button(operating_button_container, text="Deal Turn", command=lambda:engine.deal_community_cards(1))
+# deal_river_button = tk.Button(operating_button_container, text="Deal River", command=lambda:engine.deal_community_cards(1))
+
+
+check_button.pack(side="left")
+bet_button.pack(side="left")
+raise_button.pack(side="left")
+call_button.pack(side="left")
+fold_button.pack(side="left")
+# deal_community_button.pack(side="left")
+reset_button.pack(side="left")
+initialize_button.pack(side="right")
+# deal_flop_button.pack(side="left")
+# deal_turn_button.pack(side="left")
+# deal_river_button.pack(side="left")
+
 
 # Initialize the PokerEngine
 engine = PokerEngine(num_players, starting_chips=1000)
 
-# Create the players
-engine.create_players()
-
 def start_game():
-    engine.initialize_game()
+    engine.initialize_game() #create players 
+    
     engine.play_round()
 
 # Update the chip count labels
