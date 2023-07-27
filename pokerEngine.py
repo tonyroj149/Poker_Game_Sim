@@ -5,7 +5,8 @@ from PIL import Image, ImageTk
 import random
 from collections import Counter
 import time
-
+SMALL_BLIND = 5
+BIG_BLIND = 10
 card_images = {
     "2♠": "2s.png",
     "3♠": "3s.png",
@@ -77,9 +78,13 @@ class PokerEngine:
         self.burned_cards = []
         self.muck = []
         self.last_bet = 0
+        self.community_card_frames = []
+
     
-    def set_button_player(self, player_index):
+    def set_button_player(self):
         self.button_position = random.randint(0, self.num_players - 1)
+        self.small_blind_index = (self.button_position + 1) % self.num_players
+        self.big_blind_index = (self.button_position + 2) % self.num_players
     
     def rotate_button_player(self):
         self.button_position = (self.button_position + 1) % self.num_players
@@ -95,15 +100,27 @@ class PokerEngine:
             player_label_container = tk.Frame(window)
             player_label_container.place(x=x, y=y, anchor=W)
 
+            # Determine the player position and initial bet
             player = {
-                "name": f"Player {i+1}",
+                "name": f"Player {i}",
                 "chips": self.starting_chips,
                 "hand": [],
                 "score": 0,
                 "folded": False,
-                "bet": random.randint(5, 10),  # Random bet between 5 and 10
-                "chip_count_label": tk.Label(player_label_container, text='test font', font=("Arial", 10))  # Create a label for chip count
+                "bet": 0,
+                "position": None,
+                "chip_count_label": tk.Label(player_label_container, text=f"Stack: {self.starting_chips}", font=("Arial", 10))
             }
+            
+            if i == self.button_position:
+                player["position"] = self.button_position
+            elif i == (self.button_position + 1) % self.num_players:
+                player["position"] = self.small_blind_index
+                player["bet"] = SMALL_BLIND
+            elif i == (self.button_position + 2) % self.num_players:
+                player["position"] = self.big_blind_index
+                player["bet"] = BIG_BLIND
+
             # Position the chip count label to the side of the player icon
             player["chip_count_label"].pack(side="left")
             self.players.append(player)
@@ -112,9 +129,9 @@ class PokerEngine:
         return self.players[self.current_player_index]
 
     def deal_hole_cards(self):
-        self.deck = self.create_deck()
+        # self.deck = self.create_deck()
         num_players = len(self.players)
-        start_index = (self.small_blind_index + 1) % num_players
+        start_index = (self.button_position + 1) % num_players
 
         # Deal hole cards starting from the player to the left of the button (small blind)
         for i in range(num_players):
@@ -142,16 +159,21 @@ class PokerEngine:
         self.display_community_cards()
 
     def display_community_cards(self):
-        # Clear previous community card labels
+        # Clear previous community card labels and frames
         for label in self.community_card_labels:
             label.destroy()
+        for frame in self.community_card_frames:
+            frame.destroy()
         self.community_card_labels.clear()
+        self.community_card_frames.clear()
 
-        # Display new community card labels
+        # Display new community card labels and frames
         for i, card in enumerate(self.community_cards):
             x = start_x + i * (max_card_width + card_frame_padding)
             card_frame = tk.Frame(window, width=max_card_width, height=max_card_height, bg="white", highlightthickness=2, highlightbackground="black")
             card_frame.place(x=x, y=y)
+            self.community_card_frames.append(card_frame)  # Store the frame for future reference
+
             image_path = card_images[card]
             card_image = Image.open(image_path).resize((max_card_width - 10, max_card_height - 10))
             card_image_tk = ImageTk.PhotoImage(card_image)
@@ -189,44 +211,97 @@ class PokerEngine:
                 card_label.configure(image=card_image_tk)
                 card_label.image = card_image_tk
 
+    def take_bets(self):
+        active_players = self.get_active_players()
+        num_players = len(active_players)
+        current_player_index = (self.big_blind_index + 1) % num_players  # Start with the player to the left of the big blind
+        pot = self.pot
+        highest_bet = 0  # Initialize the variable to track the highest bet
 
+        # Add the small and big blind bets to the pot
+        pot += active_players[self.small_blind_index]["bet"]
+        pot += active_players[self.big_blind_index]["bet"]
 
-    def perform_action(self, action):
-        player = self.get_current_player()
+        while not self.are_bets_matched(active_players, highest_bet) and len(active_players) > 1:
+            player = active_players[current_player_index]
 
-        if action == 1:
-            print(f"{player['name']} checks.")
+            # Offer possible moves to the acting player
+            valid_moves = self.get_valid_moves(player, highest_bet)
 
-        elif action == 2:
-            bet = random.randint(5, 30)  # Retrieve the bet amount
-            if bet > player["chips"]:
-                print("Invalid bet amount: You do not have enough chips.")
-                return
+            # Get the player's move
+            move = self.get_player_move(player, valid_moves)
+
+            # Execute the player's move
+            self.execute_move(player, move, highest_bet)
+
+            # Update the acting player index
+            current_player_index = (current_player_index + 1) % len(active_players)
+
+        # Reset players' bets for the next betting round
+        for player in active_players:
+            player["bet"] = 0
+
+        # Always update the index for the next iteration
+        self.current_player_index = (current_player_index + 1) % len(active_players)
+
+    def get_valid_moves(self, player, highest_bet):
+        # Determine valid moves based on the player's previous action and the highest bet
+        valid_moves = []
+        if player["bet"] < highest_bet:
+            valid_moves.append("1: Check/Call")
+            if player["chips"] >= highest_bet - player["bet"]:
+                valid_moves.append("2: Bet/Raise")
+        else:
+            valid_moves.append("1: Check/Call")
+        valid_moves.append("3: Fold")
+        return valid_moves
+
+    def get_player_move(self, player, valid_moves):
+        # Ask the player for their move and validate the input
+        while True:
+            print(f"{player['name']}, what is your move? {' '.join(valid_moves)}")
+            user_input = input()
+
+            try:
+                move = int(user_input)
+                if move not in [1, 2, 3]:
+                    print("Invalid action. Please enter a valid move (1, 2, or 3).")
+                elif move == 2 and "2: Bet/Raise" not in valid_moves:
+                    print("Invalid action. You cannot bet/raise at this point.")
+                elif move == 1 and "1: Check/Call" not in valid_moves:
+                    print("Invalid action. You cannot check/call at this point.")
+                elif move == 3 and "3: Fold" not in valid_moves:
+                    print("Invalid action. You cannot fold at this point.")
+                else:
+                    return move
+            except ValueError:
+                print("Invalid input: Enter an integer only")
+
+    def execute_move(self, player, move, highest_bet):
+        # Execute the player's chosen move and update the game state accordingly
+        if move == 1:  # Check/Call
+            if player["bet"] == highest_bet:
+                print(f"{player['name']} checks.")
+            else:
+                to_call = highest_bet - player["bet"]
+                print(f"{player['name']} calls.")
+                player["chips"] -= to_call
+                player["bet"] += to_call
+                self.pot += to_call
+        elif move == 2:  # Bet/Raise
+            bet = random.randint(5, 30)  # Generate a random bet amount between 5 and 30
             print(f"{player['name']} bets {bet}.")
             player["chips"] -= bet
-            player["bet"] = bet
-            self.last_bet = bet
+            player["bet"] += bet
             self.pot += bet
-
-        elif action == 3:
-            if player["bet"] == 0:
-                print(f"{player['name']} can't call because there's no previous bet to match.")
-            else:
-                to_call = self.get_previous_bet() - player["bet"]  # Implement this method to get the previous bet amount
-                if to_call <= player["chips"]:
-                    print(f"{player['name']} calls.")
-                    player["chips"] -= to_call
-                    self.pot += to_call
-                else:
-                    print(f"{player['name']} can't call because there are not enough chips.")
-
-        elif action == 4:
+            highest_bet = player["bet"]  # Update the highest bet
+        elif move == 3:  # Fold
             print(f"{player['name']} folds.")
             player["folded"] = True
 
-        else:
-            print("Invalid action.")
-            return
+    def are_bets_matched(self, active_players, highest_bet):
+        # Check if all active players have matched the highest bet
+        return all(player["folded"] or player["bet"] == highest_bet for player in active_players)
 
     def get_previous_bet(self):
         return self.last_bet
@@ -246,7 +321,7 @@ class PokerEngine:
 
 
     def get_active_players(self):
-        active_players = [player for player in self.players if player["chips"] > 0 and not player["folded"]]
+        active_players = [player for player in self.players if not player["folded"]]
         return active_players
     
     def evaluate_hand(self, hand):
@@ -262,45 +337,37 @@ class PokerEngine:
         max_score = max(player["score"] for player in self.players)
         tied_players = [player for player in self.players if player["score"] == max_score]
         return tied_players
-
-    def take_bets(self):
-        active_players = self.get_active_players()
-        num_players = len(active_players)
-        first_to_act_index = 0
-        pot = self.pot
-
-        if num_players == 0:
-            print("No active players remaining.")
+    
+    def update_pot(self, move, player):
+        if move == 1:  # Check
             return
+        elif move == 2:  # Bet
+            bet = random.randint(5, 30)  # Generate a random bet amount between 5 and 30
+            if bet > player["chips"]:
+                print("Invalid bet amount: You do not have enough chips.")
+                return
+            print(f"{player['name']} bets {bet}.")
+            player["chips"] -= bet
+            player["bet"] = bet
+            self.last_bet = bet
+            self.pot += bet
+        elif move == 3:  # Call
+            to_call = self.get_previous_bet() - player["bet"]
+            if to_call > player["chips"]:
+                print("Not enough chips to call.")
+                return
+            print(f"{player['name']} calls.")
+            player["chips"] -= to_call
+            self.pot += to_call
+        elif move == 4:  # Fold
+            print(f"{player['name']} folds.")
+            player["folded"] = True
+        else:
+            print("Invalid action.")
 
-        if len(active_players) > 1:
-            button_index = self.button_position
-            first_to_act_index = (button_index + 1) % num_players
-
-        current_player_index = first_to_act_index
-        remaining_players = active_players.copy()  # Create a copy of active players list
-
-        # Take bets from active players
-        while remaining_players:
-            player = remaining_players[current_player_index]
-            if player["folded"]:
-                remaining_players.remove(player)  # Remove folded player from the list
-            else:
-                user_input = input(f"{player['name']}, what is your move? 1: Check, 2: Bet, 3: Call, 4: Fold ")
-                try:
-                    move = int(user_input)
-                    if 1 <= move <= 4:
-                        self.perform_action(move)
-                        current_player_index = (current_player_index + 1) % len(remaining_players)
-                        if self.get_previous_bet() == 0:
-                            break  # If the last action was a check, exit the loop
-                    else:
-                        print("Invalid input: Enter an integer between 1-4")
-                except ValueError:
-                    print("Invalid input: Enter an integer only")
-
-        print(f"Total pot: {self.pot}")
-
+    def are_bets_equal(self, active_players):
+        bets = [player["bet"] for player in active_players]
+        return len(set(bets)) == 1
 
     def distribute_pot(self):
         winners = self.evaluate_winner()
@@ -319,17 +386,17 @@ class PokerEngine:
 
     def deal_flop(self):
         self.deal_community_cards(3)
-        self.take_bets()
+        # self.take_bets()
         print(f"The flop is {self.community_cards}")
     
     def deal_turn(self):
         self.deal_community_cards(1)
-        self.take_bets()
+        # self.take_bets()
         print(f"The turn is {self.community_cards[3]}")
 
     def deal_river(self):
         self.deal_community_cards(1)
-        self.take_bets()
+        # self.take_bets()
         print(f"The river is {self.community_cards[4]}")
     
     def play_round(self):
@@ -350,10 +417,13 @@ class PokerEngine:
         
         self.take_bets()
         self.deal_flop()
-        time.sleep(4)
+        self.take_bets()  # Take bets after the flop
+        time.sleep(2)
         self.deal_turn()
-        time.sleep(4)
+        self.take_bets()  # Take bets after the turn
+        time.sleep(2)
         self.deal_river()
+        self.take_bets()  # Take bets after the river
         print(f'The board is {self.community_cards}')
         print(f'The burned cards: {self.burned_cards}')
         
@@ -507,34 +577,42 @@ bet_button = Button(action_button_container, text="Bet")
 raise_button = Button(action_button_container, text="Raise")
 call_button = Button(action_button_container, text="Call")
 fold_button = Button(action_button_container, text="Fold")
-# deal_community_button = tk.Button(operating_button_container, text="Deal Community", command=lambda:engine.deal_community_cards(3))
 reset_button= tk.Button(operating_button_container, text="Reset", command=lambda: engine.reset_game())
 initialize_button = tk.Button(operating_button_container, text="Start Game", command=lambda:start_game())
-# deal_flop_button = tk.Button(operating_button_container, text="Deal Flop", command=lambda:engine.deal_community_cards(3))
-# deal_turn_button = tk.Button(operating_button_container, text="Deal Turn", command=lambda:engine.deal_community_cards(1))
-# deal_river_button = tk.Button(operating_button_container, text="Deal River", command=lambda:engine.deal_community_cards(1))
-
 
 check_button.pack(side="left")
 bet_button.pack(side="left")
 raise_button.pack(side="left")
 call_button.pack(side="left")
 fold_button.pack(side="left")
-# deal_community_button.pack(side="left")
 reset_button.pack(side="left")
 initialize_button.pack(side="right")
-# deal_flop_button.pack(side="left")
-# deal_turn_button.pack(side="left")
-# deal_river_button.pack(side="left")
-
 
 # Initialize the PokerEngine
 engine = PokerEngine(num_players, starting_chips=1000)
 
 def start_game():
-    engine.initialize_game() #create players 
-    
-    engine.play_round()
+    engine.set_button_player()  # Call the method to set the button and blinds
+    engine.create_players()
+    print(f'Button player index is: {engine.button_position}')
+    engine.create_deck()
+    engine.deal_hole_cards()
+    engine.take_bets()
+
+    # Deal the flop and take bets
+    if len(engine.get_active_players()) >=2:
+        engine.deal_flop()
+        engine.take_bets()
+    else: print(f'Game is done: {engine.get_active_players()[0]}')
+
+    # # Deal the turn and take bets
+    # engine.deal_turn()
+    # engine.take_bets()
+
+    # # Deal the river and take bets
+    # engine.deal_river()
+    # engine.take_bets()
+
 
 # Update the chip count labels
 for i, player in enumerate(engine.players):
