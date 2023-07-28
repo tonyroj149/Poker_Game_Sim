@@ -213,6 +213,7 @@ class PokerEngine:
 
     def take_bets(self):
         active_players = self.get_active_players()
+        print(f'Active players are: {active_players}')
         num_players = len(active_players)
         current_player_index = (self.big_blind_index + 1) % num_players  # Start with the player to the left of the big blind
         pot = self.pot
@@ -221,8 +222,11 @@ class PokerEngine:
         # Add the small and big blind bets to the pot
         pot += active_players[self.small_blind_index]["bet"]
         pot += active_players[self.big_blind_index]["bet"]
+        highest_bet = active_players[self.big_blind_index]["bet"]
 
-        while not self.are_bets_matched(active_players, highest_bet) and len(active_players) > 1:
+        print(f'the pot is currently : {pot}')
+
+        while not self.are_bets_matched(active_players, highest_bet) and len(active_players) >= 1:
             player = active_players[current_player_index]
 
             # Offer possible moves to the acting player
@@ -289,9 +293,11 @@ class PokerEngine:
                 player["bet"] += to_call
                 self.pot += to_call
         elif move == 2:  # Bet/Raise
-            bet = random.randint(5, 30)  # Generate a random bet amount between 5 and 30
+            bet = highest_bet + random.randint(5, 30)  # Generate a random bet amount between 5 and 30
             print(f"{player['name']} bets {bet}.")
             player["chips"] -= bet
+            player["chip_count_label"].configure(text=f"{player['name']} Stack: {player['chips']}")
+            print(f'Stack size after bet: {player["chips"]}')
             player["bet"] += bet
             self.pot += bet
             highest_bet = player["bet"]  # Update the highest bet
