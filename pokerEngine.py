@@ -1,3 +1,4 @@
+from pprint import pprint
 import tkinter as tk
 from tkinter import Tk, Frame, Button, SE, SW, W
 import numpy as np
@@ -117,9 +118,11 @@ class PokerEngine:
             elif i == (self.button_position + 1) % self.num_players:
                 player["position"] = self.small_blind_index
                 player["bet"] = SMALL_BLIND
+                player["chips"] -= SMALL_BLIND
             elif i == (self.button_position + 2) % self.num_players:
                 player["position"] = self.big_blind_index
                 player["bet"] = BIG_BLIND
+                player["chips"] -= BIG_BLIND
 
             # Position the chip count label to the side of the player icon
             player["chip_count_label"].pack(side="left")
@@ -213,16 +216,15 @@ class PokerEngine:
 
     def take_bets(self):
         active_players = self.get_active_players()
-        print(f'Active players are: {active_players}')
+        print(f'Active players are: {[[player["name"],player["hand"],player["chips"]] for player in active_players]}')
         num_players = len(active_players)
         current_player_index = (self.big_blind_index + 1) % num_players  # Start with the player to the left of the big blind
         pot = self.pot
         highest_bet = 0  # Initialize the variable to track the highest bet
 
         # Add the small and big blind bets to the pot
-        pot += active_players[self.small_blind_index]["bet"]
-        pot += active_players[self.big_blind_index]["bet"]
-        highest_bet = active_players[self.big_blind_index]["bet"]
+        pot += (SMALL_BLIND + BIG_BLIND)
+        highest_bet = BIG_BLIND
 
         print(f'the pot is currently : {pot}')
 
@@ -242,11 +244,44 @@ class PokerEngine:
             current_player_index = (current_player_index + 1) % len(active_players)
 
         # Reset players' bets for the next betting round
-        for player in active_players:
-            player["bet"] = 0
+        # for player in active_players:
+        #     player["bet"] = 0
 
         # Always update the index for the next iteration
         self.current_player_index = (current_player_index + 1) % len(active_players)
+
+    def take_bets_postflop(self):
+        active_players = self.get_active_players()
+        current_player_index = self.current_player_index
+        print(f'Active players are: {[[player["name"], player["hand"], player["chips"]] for player in active_players]}')
+        num_players = len(active_players)
+        pot = self.pot
+        highest_bet = 0  # Initialize the variable to track the highest bet
+
+        print(f'the pot is currently : {pot}')
+
+        while not self.are_bets_matched(active_players, highest_bet) and len(active_players) >= 1:
+            player = active_players[current_player_index]
+
+            # Offer possible moves to the acting player
+            valid_moves = self.get_valid_moves(player, highest_bet)
+
+            # Get the player's move
+            move = self.get_player_move(player, valid_moves)
+
+            # Execute the player's move
+            self.execute_move(player, move, highest_bet)
+
+            # Update the acting player index
+            current_player_index = (current_player_index + 1) % len(active_players)
+
+        # Reset players' bets for the next betting round
+        # for player in active_players:
+        #     player["bet"] = 0
+
+        # Always update the index for the next iteration
+        self.current_player_index = (current_player_index + 1) % len(active_players)
+
 
     def get_valid_moves(self, player, highest_bet):
         # Determine valid moves based on the player's previous action and the highest bet
@@ -290,6 +325,7 @@ class PokerEngine:
                 to_call = highest_bet - player["bet"]
                 print(f"{player['name']} calls.")
                 player["chips"] -= to_call
+                player["chip_count_label"].configure(text=f"{player['name']} Stack: {player['chips']}")
                 player["bet"] += to_call
                 self.pot += to_call
         elif move == 2:  # Bet/Raise
@@ -606,10 +642,14 @@ def start_game():
     engine.take_bets()
 
     # Deal the flop and take bets
-    if len(engine.get_active_players()) >=2:
-        engine.deal_flop()
-        engine.take_bets()
-    else: print(f'Game is done: {engine.get_active_players()[0]}')
+    try:
+        if len(engine.get_active_players()) >=2:
+            engine.deal_flop()
+            engine.take_bets()
+            engine.deal_turn()
+            engine.take_bets_postflop()
+            engine.deal_river()
+    except: pprint(f'The winner is {engine.get_active_players()} with a stack of {engine.get_current_player()["chips"]}')
 
     # # Deal the turn and take bets
     # engine.deal_turn()
